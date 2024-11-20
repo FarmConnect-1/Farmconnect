@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "352724076123",
+    "project_id": "farmconnect-7113c",
+    "storage_bucket": "farmconnect-7113c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:352724076123:android:95013027747034ed8e217e",
+        "android_client_info": {
+          "package_name": "com.example.farmconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa3QbbK3ylvA1x1hgjGeQzgzHgxzb9oxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
