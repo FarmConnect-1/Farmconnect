@@ -88,6 +88,10 @@ class FarmerProfilePage extends StatelessWidget {
                       fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
+                Text(
+                  'Phone Number: ${farmerData['phoneNumber']}'
+                ),
+                const SizedBox(height: 10),
                 Text('Email: ${farmerData['email']}'),
                 const SizedBox(height: 10),
                 Text(

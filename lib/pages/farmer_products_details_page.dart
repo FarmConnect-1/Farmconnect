@@ -336,18 +336,18 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
                 style:
                 const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
+            const SizedBox(height: 20),
+            const Text(
+              'Product Images:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            _displayProductImages(),
               const SizedBox(height: 20),
               Text('Description: ${product['description']}'),
               const SizedBox(height: 20),
-              Text('Current Bid: \$${currentBid.toStringAsFixed(2)}'),
+              Text('Current Bid: \R\s${currentBid.toStringAsFixed(2)}'),
               const SizedBox(height: 20),
               Text('Highest Bidder: $highestBidderName'),
-              const SizedBox(height: 20),
-              const Text(
-                'Product Images:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              _displayProductImages(),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _isLoading ? null : _takePicture,

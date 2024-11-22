@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _farmerCertificateController = TextEditingController();
   final TextEditingController _gatSurveyController = TextEditingController();
 
@@ -63,6 +64,7 @@ class _LoginPageState extends State<LoginPage> {
           'email': user.email,
           'role': _selectedRole,
           if (_selectedRole == 'farmer') ...{
+            'phoneNumber': _phoneNumberController.text.trim(),
             'farmerCertificateNumber': _farmerCertificateController.text.trim(),
             'address': _addressController.text.trim(),
             'district': _selectedDistrict,
@@ -153,6 +155,10 @@ class _LoginPageState extends State<LoginPage> {
                     labelText: 'Username',
                   ),
                   if (_selectedRole == 'farmer') ...[
+                    _buildInputField(
+                        controller: _phoneNumberController,
+                        labelText: 'Phone number'
+                    ),
                     _buildInputField(
                       controller: _farmerCertificateController,
                       labelText: 'Farmer Certificate Number',
