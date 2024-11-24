@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert'; // For JSON decoding
+import 'package:http/http.dart' as http; // For API calls
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,9 +14,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _isSignup = false;
   String? _selectedRole;
-  String? _selectedState;
-  String? _selectedDistrict;
-  String? _selectedTaluka;
+  String? _villageName;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
@@ -22,34 +22,47 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _farmerCertificateController = TextEditingController();
   final TextEditingController _gatSurveyController = TextEditingController();
+  final TextEditingController _pincodeController = TextEditingController();
 
-  final Map<String, List<String>> states = {
-    'Maharashtra': ['Pune', 'Mumbai', 'Nagpur'],
-    'Gujarat': ['Ahmedabad', 'Surat', 'Rajkot'],
-    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai'],
-  };
+  String? _state;
+  String? _district;
+  String? _taluka;
+  List<String> _villages = [];
 
-  final Map<String, List<String>> talukas = {
-    'Pune': ['Taluka 1', 'Taluka 2'],
-    'Mumbai': ['Taluka 3', 'Taluka 4'],
-    'Nagpur': ['Taluka 5', 'Taluka 6'],
-    'Ahmedabad': ['Taluka 7', 'Taluka 8'],
-    'Surat': ['Taluka 9', 'Taluka 10'],
-    'Rajkot': ['Taluka 11', 'Taluka 12'],
-    'Chennai': ['Taluka 13', 'Taluka 14'],
-    'Coimbatore': ['Taluka 15', 'Taluka 16'],
-    'Madurai': ['Taluka 17', 'Taluka 18'],
-  };
+  Future<void> _fetchLocationData(String pincode) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.postalpincode.in/pincode/$pincode'), // Correct API endpoint
+      );
 
-  void _redirectToHomePage(String role) {
-    if (role == 'farmer') {
-      Navigator.pushReplacementNamed(context, '/farmer_home');
-    } else if (role == 'retailer') {
-      Navigator.pushReplacementNamed(context, '/retailer_home');
-    } else if (role == 'transport_provider') {
-      Navigator.pushReplacementNamed(context, '/transporter_home');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Check if response contains valid data
+        if (data is List && data.isNotEmpty && data[0]['Status'] == 'Success') {
+          final postOffices = data[0]['PostOffice']; // Get the list of PostOffices
+          setState(() {
+            _state = postOffices[0]['State'];
+            _district = postOffices[0]['District'];
+            _taluka = postOffices[0]['Block'];
+
+            // Extract all village names from the PostOffice list
+            _villages = postOffices.map<String>((office) => office['Name'] as String).toList();
+          });
+        } else {
+          throw Exception('Invalid or empty response for pincode');
+        }
+      } else {
+        throw Exception('Failed to load location data');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching location data: $e')),
+      );
     }
   }
+
+
 
   void _handleSignup() async {
     try {
@@ -67,42 +80,19 @@ class _LoginPageState extends State<LoginPage> {
             'phoneNumber': _phoneNumberController.text.trim(),
             'farmerCertificateNumber': _farmerCertificateController.text.trim(),
             'address': _addressController.text.trim(),
-            'district': _selectedDistrict,
-            'state': _selectedState,
-            'taluka': _selectedTaluka,
+            'district': _district,
+            'state': _state,
+            'taluka': _taluka,
+            'village': _villageName,
             'GATSurveyNumber': _gatSurveyController.text.trim(),
-          } else if (_selectedRole == 'retailer' || _selectedRole == 'transport_provider') ...{
-            'address': _addressController.text.trim(),
-            'district': _selectedDistrict,
-            'state': _selectedState,
-            'taluka': _selectedTaluka,
           }
         });
 
-        _redirectToHomePage(_selectedRole!);
+        Navigator.pushReplacementNamed(context, '/farmer_home');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Signup failed: $e')),
-      );
-    }
-  }
-
-  void _handleLogin() async {
-    try {
-      final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      final user = userCredential.user;
-      if (user != null) {
-        final DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
-        final String role = userDoc['role'];
-        _redirectToHomePage(role);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: $e')),
       );
     }
   }
@@ -132,7 +122,6 @@ class _LoginPageState extends State<LoginPage> {
                 obscureText: true,
               ),
               const SizedBox(height: 10),
-
               if (_isSignup) ...[
                 DropdownButton<String>(
                   hint: const Text('Select Role'),
@@ -149,114 +138,45 @@ class _LoginPageState extends State<LoginPage> {
                     });
                   },
                 ),
-                if (_selectedRole != null) ...[
+                if (_selectedRole == 'farmer') ...[
                   _buildInputField(
                     controller: _usernameController,
                     labelText: 'Username',
                   ),
-                  if (_selectedRole == 'farmer') ...[
-                    _buildInputField(
-                        controller: _phoneNumberController,
-                        labelText: 'Phone number'
-                    ),
-                    _buildInputField(
-                      controller: _farmerCertificateController,
-                      labelText: 'Farmer Certificate Number',
-                    ),
-                    _buildInputField(
-                      controller: _addressController,
-                      labelText: 'Address',
-                    ),
-                    _buildDropdown(
-                      hint: 'Select State',
-                      value: _selectedState,
-                      items: states.keys.toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedState = value;
-                          _selectedDistrict = null;
-                          _selectedTaluka = null;
-                        });
-                      },
-                    ),
-                    if (_selectedState != null) ...[
-                      _buildDropdown(
-                        hint: 'Select District',
-                        value: _selectedDistrict,
-                        items: states[_selectedState]!,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDistrict = value;
-                            _selectedTaluka = null;
-                          });
-                        },
-                      ),
-                    ],
-                    if (_selectedDistrict != null) ...[
-                      _buildDropdown(
-                        hint: 'Select Taluka',
-                        value: _selectedTaluka,
-                        items: talukas[_selectedDistrict]!,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedTaluka = value;
-                          });
-                        },
-                      ),
-                    ],
-                    _buildInputField(
-                      controller: _gatSurveyController,
-                      labelText: 'GAT Survey Number',
-                    ),
-                  ] else if (_selectedRole == 'retailer' || _selectedRole == 'transport_provider') ...[
-                    _buildInputField(
-                      controller: _addressController,
-                      labelText: 'Address',
-                    ),
-                    _buildDropdown(
-                      hint: 'Select State',
-                      value: _selectedState,
-                      items: states.keys.toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedState = value;
-                          _selectedDistrict = null;
-                          _selectedTaluka = null;
-                        });
-                      },
-                    ),
-                    if (_selectedState != null) ...[
-                      _buildDropdown(
-                        hint: 'Select District',
-                        value: _selectedDistrict,
-                        items: states[_selectedState]!,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDistrict = value;
-                            _selectedTaluka = null;
-                          });
-                        },
-                      ),
-                    ],
-                    if (_selectedDistrict != null) ...[
-                      _buildDropdown(
-                        hint: 'Select Taluka',
-                        value: _selectedTaluka,
-                        items: talukas[_selectedDistrict]!,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedTaluka = value;
-                          });
-                        },
-                      ),
-                    ],
-                  ],
-                ],
+                  _buildInputField(
+                    controller: _phoneNumberController,
+                    labelText: 'Phone Number',
+                  ),
+                  _buildInputField(
+                    controller: _farmerCertificateController,
+                    labelText: 'Farmer Certificate Number',
+                  ),
+                  _buildInputField(
+                    controller: _addressController,
+                    labelText: 'Address',
+                  ),
+                  _buildInputField(
+                    controller: _pincodeController,
+                    labelText: 'Pincode',
+                    onChanged: (value) {
+                      if (value.length == 6) {
+                        _fetchLocationData(value);
+                      }
+                    },
+                  ),
+                  if (_state != null) Text('State: $_state'),
+                  if (_district != null) Text('District: $_district'),
+                  if (_taluka != null) Text('Taluka: $_taluka'),
+                  _buildVillageDropdown(),
+                  _buildInputField(
+                    controller: _gatSurveyController,
+                    labelText: 'GAT Survey Number',
+                  ),
+                ]
               ],
-
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _isSignup ? _handleSignup : _handleLogin,
+                onPressed: _isSignup ? _handleSignup : null,
                 child: Text(_isSignup ? 'Signup' : 'Login'),
               ),
               TextButton(
@@ -278,43 +198,32 @@ class _LoginPageState extends State<LoginPage> {
     required TextEditingController controller,
     required String labelText,
     bool obscureText = false,
+    Function(String)? onChanged,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          labelText: labelText,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-        ),
-      ),
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      onChanged: onChanged,
+      decoration: InputDecoration(labelText: labelText),
     );
   }
 
-  Widget _buildDropdown({
-    required String hint,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButton<String>(
-        hint: Text(hint),
-        value: value,
-        isExpanded: true,
-        underline: Container(),
-        onChanged: onChanged,
-        items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-      ),
+  Widget _buildVillageDropdown() {
+    return DropdownButton<String>(
+      hint: const Text('Select or Enter Village'),
+      value: _villageName,
+      items: _villages
+          .map((village) => DropdownMenuItem(
+        value: village,
+        child: Text(village),
+      ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _villageName = value;
+        });
+      },
     );
   }
+
 }
