@@ -32,21 +32,17 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _fetchLocationData(String pincode) async {
     try {
       final response = await http.get(
-        Uri.parse('https://api.postalpincode.in/pincode/$pincode'), // Correct API endpoint
+        Uri.parse('https://api.postalpincode.in/pincode/$pincode'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
-        // Check if response contains valid data
         if (data is List && data.isNotEmpty && data[0]['Status'] == 'Success') {
-          final postOffices = data[0]['PostOffice']; // Get the list of PostOffices
+          final postOffices = data[0]['PostOffice'];
           setState(() {
             _state = postOffices[0]['State'];
             _district = postOffices[0]['District'];
             _taluka = postOffices[0]['Block'];
-
-            // Extract all village names from the PostOffice list
             _villages = postOffices.map<String>((office) => office['Name'] as String).toList();
           });
         } else {
@@ -61,8 +57,6 @@ class _LoginPageState extends State<LoginPage> {
       );
     }
   }
-
-
 
   void _handleSignup() async {
     try {
@@ -97,6 +91,33 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _handleLogin() async {
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      final user = userCredential.user;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
+        if (doc.exists) {
+          final role = doc.data()?['role'];
+          if (role == 'farmer') {
+            Navigator.pushReplacementNamed(context, '/farmer_home');
+          } else if (role == 'retailer') {
+            Navigator.pushReplacementNamed(context, '/retailer_home');
+          } else if (role == 'transport_provider') {
+            Navigator.pushReplacementNamed(context, '/transport_home');
+          }
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login failed: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,7 +130,7 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Image.asset('assets/logo1.png', height: 100), // Add your logo here
+              Image.asset('assets/logo1.png', height: 100),
               const SizedBox(height: 20),
               _buildInputField(
                 controller: _emailController,
@@ -176,7 +197,7 @@ class _LoginPageState extends State<LoginPage> {
               ],
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _isSignup ? _handleSignup : null,
+                onPressed: _isSignup ? _handleSignup : _handleLogin,
                 child: Text(_isSignup ? 'Signup' : 'Login'),
               ),
               TextButton(
@@ -225,5 +246,4 @@ class _LoginPageState extends State<LoginPage> {
       },
     );
   }
-
 }
