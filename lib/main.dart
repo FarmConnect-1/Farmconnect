@@ -15,6 +15,7 @@ import 'pages/bid_history_page.dart'; // Import bid history page
 import 'pages/order_history_page.dart';
 import 'pages/farmer_order_history_page.dart';
 import 'pages/select_transport_provider.dart';
+import 'pages/retailer_offers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +51,8 @@ class MyApp extends StatelessWidget {
         '/bid_history': (context) => const BidHistoryPage(), // Bid history route
         '/order_history': (context) => const OrderHistoryPage(),
         '/farmer_order_history': (context) => const FarmerOrderHistoryPage(),
-        '/selectTransportProvider': (context) => const SelectTransportProviderPage(productId: '', productName: '',) // Ensure this is defined correctly
+        '/selectTransportProvider': (context) => const SelectTransportProviderPage(productId: '', productName: '',), // Ensure this is defined correctly
+        '/retailer_offers' : (context) => const RetailerOffers()
       },
     );
   }

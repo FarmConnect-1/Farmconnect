@@ -14,7 +14,7 @@ class ProductDetailsPage extends StatefulWidget {
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
   TextEditingController bidController = TextEditingController();
-  TextEditingController quantityController = TextEditingController(); // New quantity controller
+  TextEditingController quantityController = TextEditingController();
   User? currentUser = FirebaseAuth.instance.currentUser;
   String? farmerId;
   double? currentBid;
@@ -40,7 +40,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       if (productSnapshot.exists) {
         setState(() {
           farmerId = productSnapshot['farmerId'];
-          currentBid = productSnapshot['currentBid']?.toDouble() ?? productSnapshot['startingBid']?.toDouble();
+          currentBid = productSnapshot['currentBid']?.toDouble() ??
+              productSnapshot['startingBid']?.toDouble();
           status = productSnapshot['status'] ?? 'unknown';
           productImages = productSnapshot['productImages'] ?? [];
           productVideos = productSnapshot['productVideos'] ?? [];
@@ -76,11 +77,13 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 'retailerId': currentUser?.uid,
                 'bidAmount': bidAmount,
                 'quantity': quantity,
+                'status': 'offered', // Setting status as null
                 'timestamp': FieldValue.serverTimestamp(),
               },
             );
 
-            DocumentReference productRef = firestore.collection('Products').doc(widget.productId);
+            DocumentReference productRef =
+            firestore.collection('Products').doc(widget.productId);
             transaction.update(productRef, {
               'currentBid': bidAmount,
               'highestBidder': currentUser?.uid,
@@ -120,7 +123,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   Widget _buildMediaSection() {
     List<Widget> mediaWidgets = [];
 
-    // Add product images to mediaWidgets
     if (productImages.isNotEmpty) {
       mediaWidgets.addAll(
         productImages.map(
@@ -129,7 +131,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       );
     }
 
-    // Add product videos to mediaWidgets
     if (productVideos.isNotEmpty) {
       mediaWidgets.addAll(
         productVideos.map(
@@ -138,7 +139,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       );
     }
 
-    // Limit initial display to 4 items and add Show More button if necessary
     if (!showAllMedia && mediaWidgets.length > 4) {
       mediaWidgets = mediaWidgets.sublist(0, 4);
       mediaWidgets.add(
@@ -177,7 +177,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
-// Widget to build a single media item (either image or video)
   Widget _buildMediaItem(String url, {required bool isImage}) {
     return Container(
       width: 150,
@@ -192,7 +191,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         child: Image.network(
           url,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+          errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.error),
         ),
       )
           : ClipRRect(
@@ -202,7 +202,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
-// Widget to build a video player
   Widget _buildVideoPlayer(String videoUrl) {
     VideoPlayerController controller = VideoPlayerController.network(videoUrl);
 
@@ -220,6 +219,33 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       },
     );
   }
+
+  Widget buildProductDetail(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -228,7 +254,10 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         backgroundColor: Colors.green,
       ),
       body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('Products').doc(widget.productId).get(),
+        future: FirebaseFirestore.instance
+            .collection('Products')
+            .doc(widget.productId)
+            .get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -249,7 +278,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: EdgeInsets.only(top: 3,bottom: 3),
+                          padding: const EdgeInsets.all(3),
                           width: double.infinity,
                           height: 170,
                           decoration: BoxDecoration(
@@ -261,7 +290,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         const SizedBox(height: 10),
                         Center(
                           child: Text(
-                            productData['productName'],
+                            productData['productName'] ?? '',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -272,53 +301,54 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
+                            const Text(
                               'Current Bid',
-                              style: TextStyle(fontSize: 24,fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               '₹$currentBid',
-                              style: TextStyle(fontSize: 24, color: Colors.red,fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
-
-                        Divider(thickness: 1, height: 10),
+                        const Divider(thickness: 1, height: 10),
                         DefaultTabController(
                           length: 2,
                           child: Column(
                             children: [
-                              TabBar(
+                              const TabBar(
                                 labelColor: Colors.black,
                                 unselectedLabelColor: Colors.grey,
                                 indicatorColor: Colors.green,
                                 tabs: [
-                                  Tab(text: "Description"),
-                                  Tab(text: "Product Details"),
+                                  Tab(text: 'Details'),
+                                  Tab(text: 'History'),
                                 ],
                               ),
-                              Container(
-                                height: 250,
+                              SizedBox(
+                                height: 300,
                                 child: TabBarView(
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                         children: [
-                                          buildProductDetail('Description', 'description'),
+                                          buildProductDetail('Description',
+                                              productData['description'] ?? ''),
+                                          buildProductDetail(
+                                              'Status', status ?? 'unknown'),
                                         ],
                                       ),
                                     ),
-
-                                    Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          buildProductDetail('Status', '${status ?? 'Unknown'}')
-                                        ],
-                                      ),
+                                    const Center(
+                                      child: Text('No bid history available'),
                                     ),
                                   ],
                                 ),
@@ -326,136 +356,39 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             ],
                           ),
                         ),
-                        // Bid and Quantity Input Section
-                        // Bid and Quantity Input Section
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: bidController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Enter your bid amount',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: quantityController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Enter quantity',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green[100],
-                            border: Border.all(color: Colors.green, width: 1),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Total Amount:",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                "₹ 0",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
                 ),
-                SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _placeBid,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              child: Text(
-                                "Place your bid",
-                                style: TextStyle(fontSize: 18),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                // Action for chat with farmer
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              child: Text(
-                                "Chat with Farmer",
-                                style: TextStyle(fontSize: 18),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                TextFormField(
+                  controller: bidController,
+                  keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Enter your bid amount',
+                    border: OutlineInputBorder(),
                   ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: quantityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Enter quantity',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: _placeBid,
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green),
+                  child: const Text('Place Bid'),
                 ),
               ],
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget buildProductDetail(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          Text(
-            value,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }

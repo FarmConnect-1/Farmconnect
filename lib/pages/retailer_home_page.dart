@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'product_details_page.dart'; // Import ProductDetailsPage
+import 'product_details_page.dart';
+import 'retailer_offers.dart'; // Import RetailersOfferPage
 
 class RetailerHomePage extends StatefulWidget {
   const RetailerHomePage({super.key});
@@ -11,14 +12,21 @@ class RetailerHomePage extends StatefulWidget {
 }
 
 class _RetailerHomePageState extends State<RetailerHomePage> {
-  String searchQuery = ''; // State to hold the search query
+  String searchQuery = '';
 
-  // Function to navigate to the profile info page
   void _goToProfile(BuildContext context) {
-    Navigator.pushNamed(context, '/profile');
+    Navigator.pushNamed(context, '/retailer_profile');
   }
 
-  // Function to navigate to product details page
+  void _goToNotifications(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RetailerOffers(),
+      ),
+    );
+  }
+
   void _goToProductDetails(BuildContext context, String productId) {
     Navigator.push(
       context,
@@ -28,19 +36,10 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
     );
   }
 
-  // Function to navigate to orders page
   void _goToOrders(BuildContext context) {
     Navigator.pushNamed(context, '/bid_history');
   }
 
-  // Function to handle search input
-  void _searchProducts(String query) {
-    setState(() {
-      searchQuery = query.toLowerCase(); // Update the search query
-    });
-  }
-
-  // Function to handle logout with confirmation dialog
   Future<void> _confirmLogout(BuildContext context) async {
     bool confirm = await showDialog(
       context: context,
@@ -65,7 +64,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
     if (confirm) {
       try {
         await FirebaseAuth.instance.signOut();
-        Navigator.pushReplacementNamed(context, '/login'); // Navigate to login page after logout
+        Navigator.pushReplacementNamed(context, '/login');
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Logout failed: $e')),
@@ -83,10 +82,10 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
         title: Row(
           children: [
             Image.asset(
-              'assets/logo1.png', // Path to your logo file
-              height: 55, // Adjust the height as needed
+              'assets/logo1.png',
+              height: 55,
             ),
-            const SizedBox(width: 10), // Optional space between the logo and the text
+            const SizedBox(width: 10),
             const Text(
               'Retailer Home',
               style: TextStyle(fontSize: 20),
@@ -95,15 +94,21 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              _goToNotifications(context);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
-              Navigator.pushNamed(context, '/retailer_profile');
+              _goToProfile(context);
             },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
-              _confirmLogout(context); // Call the logout confirmation dialog
+              _confirmLogout(context);
             },
           ),
         ],
@@ -117,7 +122,11 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: _searchProducts, // Call the search handler
+              onChanged: (query) {
+                setState(() {
+                  searchQuery = query.toLowerCase();
+                });
+              },
             ),
           ),
         ),
@@ -125,7 +134,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Products')
-            .where('status', isEqualTo: 'active') // Only show products with 'active' status
+            .where('status', isEqualTo: 'active')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -141,7 +150,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
           var filteredProducts = snapshot.data!.docs.where((DocumentSnapshot document) {
             Map<String, dynamic> product = document.data() as Map<String, dynamic>;
             String productName = product['productName'].toLowerCase();
-            return productName.contains(searchQuery); // Filter products by name
+            return productName.contains(searchQuery);
           }).toList();
 
           return ListView(
@@ -152,14 +161,13 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
               double currentBid = (product['currentBid']?.toDouble() ?? startingBid);
               String highestBidder = product['highestBidder'] ?? '';
 
-              // Set bid color logic
               Color bidColor;
               if (highestBidder.isEmpty) {
-                bidColor = Colors.black; // No bids yet
+                bidColor = Colors.black;
               } else if (highestBidder == user?.uid) {
-                bidColor = Colors.green; // Retailer has the highest bid
+                bidColor = Colors.green;
               } else {
-                bidColor = Colors.red; // Someone else has the highest bid
+                bidColor = Colors.red;
               }
 
               return Card(
@@ -182,7 +190,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
                     highestBidder.isEmpty
                         ? 'Starting Bid: \$${startingBid.toStringAsFixed(2)}'
                         : 'Highest Bid: \$${currentBid.toStringAsFixed(2)}',
-                    style: TextStyle(color: bidColor), // Apply color to bid
+                    style: TextStyle(color: bidColor),
                   ),
                   trailing: const Icon(Icons.arrow_forward),
                   onTap: () => _goToProductDetails(context, document.id),
@@ -195,11 +203,11 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
-          onPressed: () => _goToOrders(context), // Navigate to orders page
+          onPressed: () => _goToOrders(context),
           style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50), // Full-width button
+            minimumSize: const Size(double.infinity, 50),
           ),
-          child: const Text('View Orders'), // Updated button text
+          child: const Text('View Orders'),
         ),
       ),
     );

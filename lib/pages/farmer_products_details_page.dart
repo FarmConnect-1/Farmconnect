@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class FarmerProductDetailsPage extends StatefulWidget {
   final String productId;
@@ -27,7 +26,6 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
     _loadBids();
   }
 
-  // Function to load bids and retailer names
   Future<void> _loadBids() async {
     try {
       QuerySnapshot bidSnapshot = await FirebaseFirestore.instance
@@ -49,10 +47,12 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
             : 'Retailer not found';
 
         loadedBids.add({
+          'bidId': doc.id,
           'bidAmount': bidData['bidAmount'],
           'retailerName': retailerName,
-          'timestamp': bidData['timestamp'],
           'retailerId': bidData['retailerId'],
+          'status': bidData['status'],
+          'quantity': bidData['quantity'], // Assuming bid includes quantity
         });
       }
 
@@ -64,28 +64,46 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
     }
   }
 
-  // Function to accept a bid
-  Future<void> _acceptBid(String retailerId, double bidAmount) async {
+  Future<void> _acceptBid(String bidId, int bidQuantity) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Update product status and assign the highest bidder
-      await FirebaseFirestore.instance
-          .collection('Products')
-          .doc(widget.productId)
-          .update({
-        'status': 'closed',
-        'highestBidder': retailerId,
-        'currentBid': bidAmount,
+      // Fetch the current available quantity from the Products collection
+      DocumentReference productRef =
+      FirebaseFirestore.instance.collection('Products').doc(widget.productId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot productSnapshot = await transaction.get(productRef);
+
+        if (!productSnapshot.exists) {
+          throw Exception("Product does not exist");
+        }
+
+        int currentQuantity = productSnapshot['availableQuantity'] ?? 0;
+
+        if (currentQuantity < bidQuantity) {
+          throw Exception("Insufficient product quantity");
+        }
+
+        // Subtract the bid quantity from the available quantity
+        transaction.update(productRef, {
+          'availableQuantity': currentQuantity - bidQuantity,
+        });
+
+        // Update the status of the bid
+        transaction.update(
+          FirebaseFirestore.instance.collection('Bids').doc(bidId),
+          {'status': 'pending'},
+        );
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Offer accepted and bidding closed.')),
+        const SnackBar(content: Text('Offer accepted. Waiting for retailer to accept.')),
       );
 
-      // Refresh data after accepting bid
+      // Refresh bids
       _loadBids();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,37 +116,11 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
     }
   }
 
-  // Function to stop bidding manually
-  Future<void> _stopBidding() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('Products')
-          .doc(widget.productId)
-          .update({'status': 'closed'});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bidding stopped manually.')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error stopping bidding: $e')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Display bids with "Accept Offer" functionality
   Widget _displayBids() {
     if (bidsWithRetailerNames.isEmpty) {
       return const Center(child: Text('No bids available'));
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: bidsWithRetailerNames.map((bid) {
@@ -136,12 +128,16 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
           child: ListTile(
             title: Text('Bid: \$${bid['bidAmount']}'),
             subtitle: Text('Retailer: ${bid['retailerName']}'),
-            trailing: ElevatedButton(
+            trailing: bid['status'] == 'offered'
+                ? ElevatedButton(
               onPressed: _isLoading
                   ? null
-                  : () => _acceptBid(bid['retailerId'], bid['bidAmount']),
+                  : () => _acceptBid(bid['bidId'], bid['quantity'] ?? 0),
               child: const Text('Accept Offer'),
-            ),
+            )
+                : (bid['status'] == 'pending'
+                ? const Text('Waiting for retailer to accept')
+                : null),
           ),
         );
       }).toList(),
@@ -164,13 +160,17 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
             children: [
               Text(
                 'Product: ${product['productName']}',
-                style:
-                const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               Text('Description: ${product['description']}'),
               const SizedBox(height: 20),
               Text('Current Bid: \$${product['currentBid'] ?? 0.0}'),
+              const SizedBox(height: 20),
+              Text(
+                'Available Quantity: ${product['availableQuantity']}',
+                style: const TextStyle(fontSize: 18),
+              ),
               const SizedBox(height: 20),
               const Text(
                 'Bids:',
@@ -179,13 +179,20 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
               _displayBids(),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: _isLoading ? null : _stopBidding,
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                  await FirebaseFirestore.instance
+                      .collection('Products')
+                      .doc(widget.productId)
+                      .update({'status': 'closed'});
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator()
-                    : const Text('Stop Bid'),
+                    : const Text('Stop Bidding'),
               ),
             ],
           ),
