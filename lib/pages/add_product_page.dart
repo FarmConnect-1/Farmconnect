@@ -29,8 +29,7 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _videoUrl;
 
   Future<void> _takePicture() async {
-    final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.camera);
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
         _isLoading = true;
@@ -55,8 +54,7 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   Future<void> _recordVideo() async {
-    final pickedFile =
-    await ImagePicker().pickVideo(source: ImageSource.camera);
+    final pickedFile = await ImagePicker().pickVideo(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
         _isLoading = true;
@@ -77,8 +75,7 @@ class _AddProductPageState extends State<AddProductPage> {
   Future<String?> _uploadFile(File file, String folder) async {
     try {
       String fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      Reference storageRef =
-      FirebaseStorage.instance.ref().child('$folder/$fileName');
+      Reference storageRef = FirebaseStorage.instance.ref().child('$folder/$fileName');
       await storageRef.putFile(file);
       return await storageRef.getDownloadURL();
     } catch (e) {
@@ -88,9 +85,7 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   Future<void> _addProduct() async {
-    if (!_formKey.currentState!.validate() ||
-        _imageFiles.isEmpty ||
-        _bidEndTime == null) {
+    if (!_formKey.currentState!.validate() || _imageFiles.isEmpty || _bidEndTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all required fields.')),
       );
@@ -127,19 +122,7 @@ class _AddProductPageState extends State<AddProductPage> {
           const SnackBar(content: Text('Product added successfully')),
         );
 
-        productNameController.clear();
-        descriptionController.clear();
-        startingBidController.clear();
-        totalQuantityController.clear();
-        minQuantityController.clear();
-        retailPriceController.clear();
-        _imageFiles.clear();
-        _imageUrls.clear();
-        _videoFile = null;
-        _bidEndTime = null;
-
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/farmer_home', (route) => false);
+        _resetForm();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error adding product: $e')),
@@ -150,6 +133,21 @@ class _AddProductPageState extends State<AddProductPage> {
         });
       }
     }
+  }
+
+  void _resetForm() {
+    productNameController.clear();
+    descriptionController.clear();
+    startingBidController.clear();
+    totalQuantityController.clear();
+    minQuantityController.clear();
+    retailPriceController.clear();
+    _imageFiles.clear();
+    _imageUrls.clear();
+    _videoFile = null;
+    _bidEndTime = null;
+
+    Navigator.of(context).pushNamedAndRemoveUntil('/farmer_home', (route) => false);
   }
 
   Future<void> _pickEndTime(BuildContext context) async {
@@ -168,8 +166,13 @@ class _AddProductPageState extends State<AddProductPage> {
 
       if (pickedTime != null) {
         setState(() {
-          _bidEndTime = DateTime(pickedDate.year, pickedDate.month,
-              pickedDate.day, pickedTime.hour, pickedTime.minute);
+          _bidEndTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
         });
       }
     }
@@ -191,8 +194,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 TextFormField(
                   controller: productNameController,
                   decoration: const InputDecoration(labelText: 'Product Name'),
-                  validator: (value) =>
-                  value == null || value.isEmpty ? 'Enter product name' : null,
+                  validator: (value) => value == null || value.isEmpty ? 'Enter product name' : null,
                 ),
                 DropdownButtonFormField<String>(
                   hint: const Text('Select Category'),
@@ -200,8 +202,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   items: ['grains', 'veges', 'fruits']
                       .map((category) => DropdownMenuItem(
                     value: category,
-                    child: Text(
-                        category[0].toUpperCase() + category.substring(1)),
+                    child: Text(category[0].toUpperCase() + category.substring(1)),
                   ))
                       .toList(),
                   onChanged: (value) {
@@ -209,26 +210,20 @@ class _AddProductPageState extends State<AddProductPage> {
                       _selectedCategory = value;
                     });
                   },
-                  validator: (value) =>
-                  value == null ? 'Select a category' : null,
+                  validator: (value) => value == null ? 'Select a category' : null,
                 ),
                 TextFormField(
                   controller: descriptionController,
                   decoration: const InputDecoration(labelText: 'Description'),
-                  validator: (value) =>
-                  value == null || value.isEmpty ? 'Enter description' : null,
+                  validator: (value) => value == null || value.isEmpty ? 'Enter description' : null,
                 ),
                 TextFormField(
                   controller: startingBidController,
                   decoration: const InputDecoration(labelText: 'Starting Bid'),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter starting bid';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return 'Enter a valid number';
-                    }
+                    if (value == null || value.isEmpty) return 'Enter starting bid';
+                    if (double.tryParse(value) == null) return 'Enter a valid number';
                     return null;
                   },
                 ),
@@ -237,12 +232,8 @@ class _AddProductPageState extends State<AddProductPage> {
                   decoration: const InputDecoration(labelText: 'Total Quantity'),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter total quantity';
-                    }
-                    if (int.tryParse(value) == null) {
-                      return 'Enter a valid number';
-                    }
+                    if (value == null || value.isEmpty) return 'Enter total quantity';
+                    if (int.tryParse(value) == null) return 'Enter a valid number';
                     return null;
                   },
                 ),
@@ -251,12 +242,8 @@ class _AddProductPageState extends State<AddProductPage> {
                   decoration: const InputDecoration(labelText: 'Minimum Quantity'),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter minimum quantity';
-                    }
-                    if (int.tryParse(value) == null) {
-                      return 'Enter a valid number';
-                    }
+                    if (value == null || value.isEmpty) return 'Enter minimum quantity';
+                    if (int.tryParse(value) == null) return 'Enter a valid number';
                     return null;
                   },
                 ),
@@ -266,20 +253,13 @@ class _AddProductPageState extends State<AddProductPage> {
                       labelText: 'Retail Price (when quantity < min quantity)'),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter retail price';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return 'Enter a valid price';
-                    }
+                    if (value == null || value.isEmpty) return 'Enter retail price';
+                    if (double.tryParse(value) == null) return 'Enter a valid price';
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _takePicture,
-                  child: const Text('Take Picture'),
-                ),
+                ElevatedButton(onPressed: _takePicture, child: const Text('Take Picture')),
                 const SizedBox(height: 10),
                 if (_imageFiles.isNotEmpty)
                   SizedBox(
@@ -293,23 +273,21 @@ class _AddProductPageState extends State<AddProductPage> {
                       ),
                     ),
                   ),
-                ElevatedButton(
-                  onPressed: _recordVideo,
-                  child: const Text('Record Video'),
-                ),
+                ElevatedButton(onPressed: _recordVideo, child: const Text('Record Video')),
                 const SizedBox(height: 10),
+                if (_videoFile != null) const Text('Video Recorded'),
                 ElevatedButton(
                   onPressed: () => _pickEndTime(context),
-                  child: const Text('Set Bid End Time'),
+                  child: const Text('Select Bid End Time'),
                 ),
-                if (_bidEndTime != null)
-                  Text(
-                      'Bid End Time: ${_bidEndTime!.toLocal().toString().split(' ')[0]} ${_bidEndTime!.toLocal().toString().split(' ')[1]}'),
+                const SizedBox(height: 10),
+                if (_bidEndTime != null) Text('Bid End Time: $_bidEndTime'),
                 const SizedBox(height: 20),
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                    onPressed: _addProduct, child: const Text('Add Product')),
+                if (_isLoading) const CircularProgressIndicator(),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _addProduct,
+                  child: const Text('Add Product'),
+                ),
               ],
             ),
           ),
