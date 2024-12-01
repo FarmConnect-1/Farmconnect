@@ -1,4 +1,4 @@
-import 'package:farmconnect/pages/product_details_page.dart'; // Import product details page
+import 'package:farmconnect/pages/product_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,16 +6,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
-import 'pages/farmer_home_page.dart'; // Import role-specific pages
+import 'pages/farmer_home_page.dart';
 import 'pages/retailer_home_page.dart';
 import 'pages/transporter_home_page.dart';
-import 'pages/farmer_profile_page.dart'; // Import farmer profile page
-import 'pages/retailer_profile_page.dart'; // Import retailer profile page
-import 'pages/bid_history_page.dart'; // Import bid history page
+import 'pages/farmer_profile_page.dart';
+import 'pages/retailer_profile_page.dart';
+import 'pages/bid_history_page.dart';
 import 'pages/order_history_page.dart';
 import 'pages/farmer_order_history_page.dart';
 import 'pages/select_transport_provider.dart';
 import 'pages/retailer_offers.dart';
+import 'pages/chatlist.dart';
+import 'pages/chat_details_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,37 +39,50 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      initialRoute: '/', // Set the initial route
+      initialRoute: '/',
       routes: {
-        '/': (context) => const AuthWrapper(), // Checks auth state
+        '/': (context) => const AuthWrapper(),
         '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(), // You can keep this for a generic home
-        '/farmer_home': (context) => const FarmerHomePage(), // Farmer home route
-        '/farmer_profile': (context) => const FarmerProfilePage(), // Farmer profile route
-        '/retailer_home': (context) => const RetailerHomePage(), // Retailer home route
-        '/retailer_profile': (context) => const RetailerProfilePage(), // Retailer profile route
-        '/transporter_home': (context) => const TransporterHomePage(), // Transport provider home route
-        '/product_details': (context) => const ProductDetailsPage(productId: ''), // Product details route
-        '/bid_history': (context) => const BidHistoryPage(), // Bid history route
-        '/order_history': (context) => const OrderHistoryPage(),
+        '/home': (context) => const HomePage(),
+        '/farmer_home': (context) => const FarmerHomePage(),
+        '/farmer_profile': (context) => const FarmerProfilePage(),
+        '/retailer_home': (context) => const RetailerHomePage(),
+        '/retailer_profile': (context) => const RetailerProfilePage(),
+        '/transporter_home': (context) => const TransporterHomePage(),
+        '/product_details': (context) => const ProductDetailsPage(productId: ''),
+        '/bid_history': (context) => const BidHistoryPage(),
+        '/order_history_page': (context) => const OrderHistoryPage(),
         '/farmer_order_history': (context) => const FarmerOrderHistoryPage(),
-        '/selectTransportProvider': (context) => const SelectTransportProviderPage(productId: '', productName: '',), // Ensure this is defined correctly
-        '/retailer_offers' : (context) => const RetailerOffers()
+        '/selectTransportProvider': (context) => const SelectTransportProviderPage(
+          productId: '',
+          productName: '',
+        ),
+        '/retailer_offers': (context) => const RetailerOffers(),
+        '/chatlist': (context) => const ChatListPage(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/chat_details') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => ChatDetailsPage(
+              chatId: args['chatId'],
+              recipientName: args['recipientName'],
+            ),
+          );
+        }
+        return null;
       },
     );
   }
 }
 
-// Wrapper to handle authentication state and role-based redirection
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   Future<String?> _getUserRole() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Fetch the user's role from Firestore
-      DocumentSnapshot userDoc =
-      await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
       if (userDoc.exists) {
         return userDoc['role'] as String?;
       }
@@ -89,7 +104,6 @@ class AuthWrapper extends StatelessWidget {
             child: Text('Something went wrong!'),
           );
         } else if (snapshot.hasData) {
-          // User is logged in, now check their role and redirect accordingly
           return FutureBuilder<String?>(
             future: _getUserRole(),
             builder: (context, AsyncSnapshot<String?> roleSnapshot) {
@@ -107,12 +121,12 @@ class AuthWrapper extends StatelessWidget {
               } else if (role == 'transport_provider') {
                 return const TransporterHomePage();
               } else {
-                return const HomePage(); // Fallback if role not found
+                return const HomePage();
               }
             },
           );
         } else {
-          return const LoginPage(); // Redirect to LoginPage if not logged in
+          return const LoginPage();
         }
       },
     );

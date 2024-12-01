@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'product_details_page.dart';
 import 'retailer_offers.dart'; // Import RetailersOfferPage
+import 'chatlist.dart'; // Import the ChatListPage
 
 class RetailerHomePage extends StatefulWidget {
   const RetailerHomePage({super.key});
@@ -23,6 +24,15 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
       context,
       MaterialPageRoute(
         builder: (context) => const RetailerOffers(),
+      ),
+    );
+  }
+
+  void _goToChatList(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ChatListPage(),
       ),
     );
   }
@@ -93,6 +103,10 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat), // Chat icon
+            onPressed: () => _goToChatList(context), // Navigate to ChatListPage
+          ),
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
