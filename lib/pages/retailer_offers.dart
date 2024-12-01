@@ -38,55 +38,74 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
             itemBuilder: (context, index) {
               Map<String, dynamic> bidData = bids[index].data() as Map<String, dynamic>;
 
-              String productName = bidData['productName'] ?? 'Unknown Product';
-              double bidAmount = bidData['bidAmount']?.toDouble() ?? 0.0;
-              String farmerName = bidData['farmerName'] ?? 'Unknown Farmer';
+              String productId = bidData['productId'] ?? '';
+              String retailerId = bidData['retailerId'] ?? ''; // Fetch retailerId from Bids
               String bidId = bids[index].id;
-              String status = bidData['status'] ?? 'pending';
+              double bidAmount = bidData['bidAmount']?.toDouble() ?? 0.0;
 
-              return Card(
-                margin: const EdgeInsets.all(10),
-                elevation: 5,
-                child: ListTile(
-                  title: Text(
-                    productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    'Bid Amount: ₹${bidAmount.toStringAsFixed(2)}\nFarmer: $farmerName',
-                  ),
-                  trailing: status == 'pending'
-                      ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => _updateBidStatus(bidId, 'locked'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('Products').doc(productId).get(),
+                builder: (context, productSnapshot) {
+                  if (productSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (productSnapshot.hasError || !productSnapshot.hasData || !productSnapshot.data!.exists) {
+                    return const Center(child: Text('Error fetching product details'));
+                  }
+
+                  Map<String, dynamic> productData = productSnapshot.data!.data() as Map<String, dynamic>;
+                  String productName = productData['productName'] ?? 'Unknown Product';
+                  String farmerId = productData['farmerId'] ?? '';
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('Users').doc(farmerId).get(),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
+                        return const Center(child: Text('Error fetching farmer details'));
+                      }
+
+                      Map<String, dynamic> userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      String farmerName = userData['username'] ?? 'Unknown Farmer';
+
+                      return Card(
+                        margin: const EdgeInsets.all(10),
+                        elevation: 5,
+                        child: ListTile(
+                          title: Text(
+                            productName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Bid Amount: ₹${bidAmount.toStringAsFixed(2)}\nFarmer: $farmerName',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () => _updateBidStatus(bidId, 'locked', productId, retailerId),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                ),
+                                child: const Text('Accept'),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () => _updateBidStatus(bidId, 'rejected', null, retailerId),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                child: const Text('Reject'),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Text('Accept'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () => _updateBidStatus(bidId, 'rejected'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        child: const Text('Reject'),
-                      ),
-                    ],
-                  )
-                      : Text(
-                    status == 'locked'
-                        ? 'Offer Accepted'
-                        : 'Offer Rejected',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: status == 'locked' ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ),
+                      );
+                    },
+                  );
+                },
               );
             },
           );
@@ -95,12 +114,34 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
     );
   }
 
-  // Function to update the bid status
-  Future<void> _updateBidStatus(String bidId, String newStatus) async {
+  // Function to update the bid status and add an order if accepted
+  Future<void> _updateBidStatus(String bidId, String newStatus, String? productId, String retailerId) async {
     try {
+      // Update the bid status
       await FirebaseFirestore.instance.collection('Bids').doc(bidId).update({
         'status': newStatus,
       });
+
+      if (newStatus == 'locked' && productId != null) {
+        // Fetch the product document to get details
+        DocumentSnapshot productSnapshot =
+        await FirebaseFirestore.instance.collection('Products').doc(productId).get();
+
+        if (productSnapshot.exists) {
+          Map<String, dynamic> productData = productSnapshot.data() as Map<String, dynamic>;
+
+          // Add the data to Orders collection
+          await FirebaseFirestore.instance.collection('Orders').add({
+            'productID': productId,
+            'retailerId': retailerId, // Taken from Bids collection
+            'farmerId': productData['farmerId'], // Extracted from product
+            'bidId': bidId,
+            'orderDate': FieldValue.serverTimestamp(), // Optional timestamp
+          });
+        }
+      }
+
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -111,6 +152,7 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
         ),
       );
     } catch (e) {
+      // Handle errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating status: $e')),
       );
