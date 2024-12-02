@@ -47,7 +47,11 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
   }
 
   void _goToOrders(BuildContext context) {
+<<<<<<< HEAD
     Navigator.pushNamed(context, '/order_history_page');
+=======
+    Navigator.pushNamed(context, '/order_history');
+>>>>>>> cbe0b862fc09bfc0afec31835791eb9bf902a215
   }
 
   Future<void> _confirmLogout(BuildContext context) async {

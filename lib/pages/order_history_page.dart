@@ -95,7 +95,11 @@ class OrderHistoryPage extends StatelessWidget {
                           }
 
                           Map<String, dynamic> bidData = bidSnapshot.data!.data() as Map<String, dynamic>;
+<<<<<<< HEAD
                           double bidAmount = (bidData['bidAmount'] ?? 0).toDouble();;
+=======
+                          double bidAmount = (bidData['bidAmount'] ?? 0).toDouble(); // Safely convert to double
+>>>>>>> cbe0b862fc09bfc0afec31835791eb9bf902a215
                           int quantity = bidData['quantity'] ?? 0;
 
                           return Card(
@@ -110,7 +114,11 @@ class OrderHistoryPage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Farmer: $farmerName'),
+<<<<<<< HEAD
                                   Text('Bid Amount: \${bidAmount.toStringAsFixed(2)}'),
+=======
+                                  Text('Bid Amount: \$${bidAmount.toStringAsFixed(2)}'), // Display as double
+>>>>>>> cbe0b862fc09bfc0afec31835791eb9bf902a215
                                   Text('Quantity: $quantity'),
                                 ],
                               ),
@@ -137,4 +145,8 @@ class OrderHistoryPage extends StatelessWidget {
       ),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> cbe0b862fc09bfc0afec31835791eb9bf902a215
