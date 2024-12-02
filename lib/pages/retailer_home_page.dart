@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'product_details_page.dart';
 import 'retailer_offers.dart'; // Import RetailersOfferPage
-import 'chatlist.dart'; // Import the ChatListPage
+import 'chatlist.dart';
+
 
 class RetailerHomePage extends StatefulWidget {
   const RetailerHomePage({super.key});
@@ -19,6 +20,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
     Navigator.pushNamed(context, '/retailer_profile');
   }
 
+
   void _goToNotifications(BuildContext context) {
     Navigator.push(
       context,
@@ -27,15 +29,13 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
       ),
     );
   }
-
   void _goToChatList(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const ChatListPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const ChatListPage()), // Navigate to the chat list page
     );
   }
+
 
   void _goToProductDetails(BuildContext context, String productId) {
     Navigator.push(
@@ -47,7 +47,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
   }
 
   void _goToOrders(BuildContext context) {
-    Navigator.pushNamed(context, '/bid_history');
+    Navigator.pushNamed(context, '/order_history_page');
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -105,7 +105,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.chat), // Chat icon
-            onPressed: () => _goToChatList(context), // Navigate to ChatListPage
+            onPressed: () => _goToChatList(context), // Navigate to the chat list page
           ),
           IconButton(
             icon: const Icon(Icons.notifications),

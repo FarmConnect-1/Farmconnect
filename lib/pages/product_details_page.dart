@@ -116,7 +116,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
   void _chatWithFarmer(BuildContext context) {
     if (farmerId != null) {
-      Navigator.pushNamed(context, '/chat', arguments: {'farmerId': farmerId});
+      Navigator.pushNamed(context, '/chat_details', arguments: {'farmerId': farmerId});
     }
   }
 

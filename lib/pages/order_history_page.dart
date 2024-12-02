@@ -110,7 +110,7 @@ class OrderHistoryPage extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Farmer: $farmerName'),
-                                  Text('Bid Amount: \$${bidAmount.toStringAsFixed(2)}'),
+                                  Text('Bid Amount: \${bidAmount.toStringAsFixed(2)}'),
                                   Text('Quantity: $quantity'),
                                 ],
                               ),

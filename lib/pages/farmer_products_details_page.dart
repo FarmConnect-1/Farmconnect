@@ -137,9 +137,7 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
             )
                 : (bid['status'] == 'pending'
                 ? const Text('Waiting for retailer to accept')
-                : (bid['status'] == 'locked'
-                ? const Text('Accepted') // Message for locked status
-                : null)),
+                : null),
           ),
         );
       }).toList(),
