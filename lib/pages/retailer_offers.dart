@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RetailerOffers extends StatefulWidget {
   const RetailerOffers({super.key});
@@ -9,8 +10,26 @@ class RetailerOffers extends StatefulWidget {
 }
 
 class _RetailerOffersPageState extends State<RetailerOffers> {
+  String? currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch the current user's ID
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (currentUserId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Pending Offers'),
+        ),
+        body: const Center(child: Text('User not logged in')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Offers'),
@@ -18,7 +37,8 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Bids')
-            .where('status', isEqualTo: 'pending') // Filter by pending status
+            .where('status', isEqualTo: 'pending')
+            .where('retailerId', isEqualTo: currentUserId) // Current user's ID
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -39,7 +59,6 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
               Map<String, dynamic> bidData = bids[index].data() as Map<String, dynamic>;
 
               String productId = bidData['productId'] ?? '';
-              String retailerId = bidData['retailerId'] ?? ''; // Fetch retailerId from Bids
               String bidId = bids[index].id;
               double bidAmount = bidData['bidAmount']?.toDouble() ?? 0.0;
 
@@ -85,7 +104,7 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ElevatedButton(
-                                onPressed: () => _updateBidStatus(bidId, 'locked', productId, retailerId),
+                                onPressed: () => _updateBidStatus(bidId, 'locked', productId),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                 ),
@@ -93,7 +112,7 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton(
-                                onPressed: () => _updateBidStatus(bidId, 'rejected', null, retailerId),
+                                onPressed: () => _updateBidStatus(bidId, 'rejected', null),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
                                 ),
@@ -114,34 +133,29 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
     );
   }
 
-  // Function to update the bid status and add an order if accepted
-  Future<void> _updateBidStatus(String bidId, String newStatus, String? productId, String retailerId) async {
+  Future<void> _updateBidStatus(String bidId, String newStatus, String? productId) async {
     try {
-      // Update the bid status
       await FirebaseFirestore.instance.collection('Bids').doc(bidId).update({
         'status': newStatus,
       });
 
       if (newStatus == 'locked' && productId != null) {
-        // Fetch the product document to get details
         DocumentSnapshot productSnapshot =
         await FirebaseFirestore.instance.collection('Products').doc(productId).get();
 
         if (productSnapshot.exists) {
           Map<String, dynamic> productData = productSnapshot.data() as Map<String, dynamic>;
 
-          // Add the data to Orders collection
           await FirebaseFirestore.instance.collection('Orders').add({
             'productID': productId,
-            'retailerId': retailerId, // Taken from Bids collection
-            'farmerId': productData['farmerId'], // Extracted from product
+            'retailerId': currentUserId,
+            'farmerId': productData['farmerId'],
             'bidId': bidId,
-            'orderDate': FieldValue.serverTimestamp(), // Optional timestamp
+            'orderDate': FieldValue.serverTimestamp(),
           });
         }
       }
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -152,7 +166,6 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
         ),
       );
     } catch (e) {
-      // Handle errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating status: $e')),
       );

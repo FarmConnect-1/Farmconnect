@@ -62,57 +62,115 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       return;
     }
 
-    double bidAmount = double.tryParse(bidController.text) ?? 0;
-    int quantity = int.tryParse(quantityController.text) ?? 0;
-    if (bidAmount > 0 && quantity > 0) {
-      try {
-        if (bidAmount > (currentBid ?? 0)) {
-          FirebaseFirestore firestore = FirebaseFirestore.instance;
+    double? bidAmount = double.tryParse(bidController.text);
+    int? quantity = int.tryParse(quantityController.text);
 
-          await firestore.runTransaction((transaction) async {
-            transaction.set(
-              firestore.collection('Bids').doc(),
-              {
-                'productId': widget.productId,
-                'retailerId': currentUser?.uid,
-                'bidAmount': bidAmount,
-                'quantity': quantity,
-                'status': 'offered', // Setting status as null
-                'timestamp': FieldValue.serverTimestamp(),
-              },
-            );
-
-            DocumentReference productRef =
-            firestore.collection('Products').doc(widget.productId);
-            transaction.update(productRef, {
-              'currentBid': bidAmount,
-              'highestBidder': currentUser?.uid,
-            });
-          });
-
-          setState(() {
-            currentBid = bidAmount;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bid placed successfully!')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bid must be higher than the current bid!')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error placing bid: $e')),
-        );
-      }
-    } else {
+    if (bidAmount == null || bidAmount <= 0 || quantity == null || quantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid bid or quantity!')),
       );
+      return;
+    }
+
+    try {
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      // Get the available quantity of the product from the Products collection
+      DocumentSnapshot productSnapshot = await firestore.collection('Products').doc(widget.productId).get();
+      if (!productSnapshot.exists) {
+        throw Exception('Product does not exist.');
+      }
+
+      int availableQuantity = productSnapshot.get('availableQuantity') ?? 0;
+      if (quantity > availableQuantity) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('This much quantity is not available. Only $availableQuantity items are available.')),
+        );
+        return;
+      }
+
+      // Check if the user has already placed a bid on this product
+      QuerySnapshot bidSnapshot = await firestore
+          .collection('Bids')
+          .where('productId', isEqualTo: widget.productId)
+          .where('retailerId', isEqualTo: currentUser?.uid)
+          .get();
+
+      if (bidSnapshot.docs.isNotEmpty) {
+        DocumentSnapshot existingBid = bidSnapshot.docs.first;
+        String existingStatus = existingBid.get('status') ?? '';
+
+        if (existingStatus == 'pending') {
+          // Prevent further bidding if status is 'pending'
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please accept or reject your last bid.')),
+          );
+          return;
+        } else if (existingStatus == 'locked' || existingStatus == 'rejected') {
+          // Create a new bid if status is 'locked' or 'rejected'
+          await firestore.collection('Bids').add({
+            'productId': widget.productId,
+            'retailerId': currentUser?.uid,
+            'bidAmount': bidAmount,
+            'quantity': quantity,
+            'status': 'offered',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // Update the existing bid
+          DocumentReference existingBidRef = existingBid.reference;
+          await firestore.runTransaction((transaction) async {
+            DocumentReference productRef = firestore.collection('Products').doc(widget.productId);
+
+            // Update product details if the new bid is higher than the current bid
+            DocumentSnapshot productSnapshot = await transaction.get(productRef);
+            if (!productSnapshot.exists) {
+              throw Exception('Product does not exist.');
+            }
+
+            double? currentBidInDB = productSnapshot.get('currentBid')?.toDouble();
+            if (currentBidInDB == null || bidAmount > currentBidInDB) {
+              // Update the current bid in the Products collection
+              transaction.update(productRef, {
+                'currentBid': bidAmount,
+                'highestBidder': currentUser?.uid,
+              });
+            }
+
+            // Update the existing bid details
+            transaction.update(existingBidRef, {
+              'bidAmount': bidAmount,
+              'quantity': quantity,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+          });
+        }
+      } else {
+        // Create a new bid if no previous bid exists
+        await firestore.collection('Bids').add({
+          'productId': widget.productId,
+          'retailerId': currentUser?.uid,
+          'bidAmount': bidAmount,
+          'quantity': quantity,
+          'status': 'offered',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      }
+
+      setState(() {
+        currentBid = bidAmount;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bid placed successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error placing bid: ${e.toString()}')),
+      );
     }
   }
+
 
   void _chatWithFarmer(BuildContext context) {
     if (farmerId != null) {

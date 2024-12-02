@@ -124,10 +124,30 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: bidsWithRetailerNames.map((bid) {
+        String statusMessage = '';
+        if (bid['status'] == 'locked') {
+          statusMessage = 'This bid has been locked.';
+        } else if (bid['status'] == 'rejected') {
+          statusMessage = 'This bid has been taken back.';
+        }
+
         return Card(
           child: ListTile(
             title: Text('Bid: \$${bid['bidAmount']}'),
-            subtitle: Text('Retailer: ${bid['retailerName']}'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Retailer: ${bid['retailerName']}'),
+                if (statusMessage.isNotEmpty) // Show message only for locked/rejected status
+                  Text(
+                    statusMessage,
+                    style: TextStyle(
+                      color: bid['status'] == 'locked' ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
             trailing: bid['status'] == 'offered'
                 ? ElevatedButton(
               onPressed: _isLoading
@@ -143,6 +163,7 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
       }).toList(),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
