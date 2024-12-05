@@ -5,6 +5,7 @@ import 'add_product_page.dart'; // Import the add product page
 import 'farmer_products_details_page.dart'; // Import the farmer product details page
 import 'farmer_profile_page.dart'; // Import the farmer profile page
 import 'farmer_order_history_page.dart'; // Import the order history page
+import 'chatlist.dart'; // Import the chat list page
 
 class FarmerHomePage extends StatelessWidget {
   const FarmerHomePage({super.key});
@@ -54,6 +55,16 @@ class FarmerHomePage extends StatelessWidget {
     );
   }
 
+  _goToChatList(BuildContext context, String currentUserId, String userRole) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatListPage(currentUserRole: userRole),
+      ),
+    );
+  }
+
+
   // Navigate to the FarmerProductDetailsPage
   void _goToProductDetails(BuildContext context, String productId, Map<String, dynamic> productData) {
     Navigator.push(
@@ -79,6 +90,18 @@ class FarmerHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     User? user = FirebaseAuth.instance.currentUser;
 
+    // Check if the user is logged in, and get user details
+    if (user == null) {
+      return Scaffold(
+        body: Center(
+          child: Text("User is not logged in."),
+        ),
+      );
+    }
+
+    String currentUserId = user.uid; // Get the current user's ID
+    String userRole = "farmer"; // You can replace this with actual logic to get the user's role
+
     return Scaffold(
       appBar: AppBar(
         // Add the logo in the leading property of the AppBar
@@ -91,6 +114,10 @@ class FarmerHomePage extends StatelessWidget {
         ),
         title: const Text('Farmer Home'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat), // Chat icon
+            onPressed: () => _goToChatList(context, currentUserId, userRole), // Pass the currentUserId and userRole
+          ),
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => _goToProfile(context), // Go to the profile page

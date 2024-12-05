@@ -12,6 +12,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  intl: ^0.17.0
 
 
 
@@ -39,4 +40,5 @@ flutter:
 
 
   assets:
+    - assets/light_green.jpg
     - assets/logo1.png

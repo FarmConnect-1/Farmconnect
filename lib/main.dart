@@ -1,4 +1,6 @@
-import 'package:farmconnect/pages/product_details_page.dart'; // Import product details page
+import 'package:farmconnect/pages/chat_page.dart';
+import 'package:farmconnect/pages/product_details_page.dart';
+import 'package:farmconnect/pages/signup_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,12 +18,18 @@ import 'pages/order_history_page.dart';
 import 'pages/farmer_order_history_page.dart';
 import 'pages/select_transport_provider.dart';
 import 'pages/retailer_offers.dart';
+import 'pages/chatlist.dart'; // Import ChatListPage
+import 'pages/welcome_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Error initializing Firebase: $e');
+  }
   runApp(const MyApp());
 }
 
@@ -37,23 +45,86 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      initialRoute: '/', // Set the initial route
-      routes: {
-        '/': (context) => const AuthWrapper(), // Checks auth state
-        '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(), // You can keep this for a generic home
-        '/farmer_home': (context) => const FarmerHomePage(), // Farmer home route
-        '/farmer_profile': (context) => const FarmerProfilePage(), // Farmer profile route
-        '/retailer_home': (context) => const RetailerHomePage(), // Retailer home route
-        '/retailer_profile': (context) => const RetailerProfilePage(), // Retailer profile route
-        '/transporter_home': (context) => const TransporterHomePage(), // Transport provider home route
-        '/product_details': (context) => const ProductDetailsPage(productId: ''), // Product details route
-        '/bid_history': (context) => const BidHistoryPage(), // Bid history route
-        '/order_history': (context) => const OrderHistoryPage(),
-        '/farmer_order_history': (context) => const FarmerOrderHistoryPage(),
-        '/selectTransportProvider': (context) => const SelectTransportProviderPage(productId: '', productName: '',), // Ensure this is defined correctly
-        '/retailer_offers' : (context) => const RetailerOffers()
-      },
+      initialRoute: '/welcome_page', // Set the initial route
+      onGenerateRoute: _generateRoute, // Use dynamic route generation
+    );
+  }
+
+  Route<dynamic>? _generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (context) => const AuthWrapper());
+      case '/login':
+        return MaterialPageRoute(builder: (context) => const LoginPage());
+      case '/home':
+        return MaterialPageRoute(builder: (context) => const HomePage());
+      case '/welcome_page':
+        return MaterialPageRoute(builder: (context) => const WelcomePage());
+      case '/signup_page':
+        return MaterialPageRoute(builder: (context) => const SignupPage());
+      case '/farmer_home':
+        return MaterialPageRoute(builder: (context) => const FarmerHomePage());
+      case '/farmer_profile':
+        return MaterialPageRoute(builder: (context) => const FarmerProfilePage());
+      case '/retailer_home':
+        return MaterialPageRoute(builder: (context) => const RetailerHomePage());
+      case '/retailer_profile':
+        return MaterialPageRoute(builder: (context) => const RetailerProfilePage());
+      case '/transporter_home':
+        return MaterialPageRoute(builder: (context) => const TransporterHomePage());
+      case '/product_details':
+        return MaterialPageRoute(
+          builder: (context) => const ProductDetailsPage(productId: ''),
+        );
+
+      case '/order_history':
+        return MaterialPageRoute(builder: (context) => const OrderHistoryPage());
+      case '/farmer_order_history':
+        return MaterialPageRoute(
+          builder: (context) => const FarmerOrderHistoryPage(),
+        );
+      case '/selectTransportProvider':
+        return MaterialPageRoute(
+          builder: (context) =>
+          const SelectTransportProviderPage(productId: '', productName: ''),
+        );
+      case '/retailer_offers':
+        return MaterialPageRoute(builder: (context) => const RetailerOffers());
+      case '/chat':
+        final args = settings.arguments as Map<String, dynamic>?; // Retrieve arguments
+        if (args != null &&
+            args.containsKey('currentUserId') &&
+            args.containsKey('targetUserId') &&
+            args.containsKey('targetUserName')) {
+          return MaterialPageRoute(
+            builder: (context) => ChatPage(
+              currentUserId: args['currentUserId'],
+              targetUserId: args['targetUserId'],
+              targetUserName: args['targetUserName'],
+            ),
+          );
+        }
+        return _errorRoute(); // Handle missing arguments
+
+      case '/chat_list':
+        final args = settings.arguments as Map<String, dynamic>?; // Retrieve arguments
+        if (args != null && args.containsKey('currentUserRole')) {
+          return MaterialPageRoute(
+            builder: (context) =>
+                ChatListPage(currentUserRole: args['currentUserRole']),
+          );
+        }
+        return _errorRoute(); // Handle missing arguments
+      default:
+        return _errorRoute();
+    }
+  }
+
+  Route<dynamic> _errorRoute() {
+    return MaterialPageRoute(
+      builder: (context) => const Scaffold(
+        body: Center(child: Text('Page not found!')),
+      ),
     );
   }
 }
@@ -63,14 +134,17 @@ class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   Future<String?> _getUserRole() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      // Fetch the user's role from Firestore
-      DocumentSnapshot userDoc =
-      await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
-      if (userDoc.exists) {
-        return userDoc['role'] as String?;
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc =
+        await FirebaseFirestore.instance.collection('Users').doc(user.uid).get();
+        if (userDoc.exists) {
+          return userDoc['role'] as String?;
+        }
       }
+    } catch (e) {
+      debugPrint('Error fetching user role: $e');
     }
     return null;
   }
@@ -89,7 +163,6 @@ class AuthWrapper extends StatelessWidget {
             child: Text('Something went wrong!'),
           );
         } else if (snapshot.hasData) {
-          // User is logged in, now check their role and redirect accordingly
           return FutureBuilder<String?>(
             future: _getUserRole(),
             builder: (context, AsyncSnapshot<String?> roleSnapshot) {
