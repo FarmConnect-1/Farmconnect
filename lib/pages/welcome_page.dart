@@ -12,7 +12,7 @@ class WelcomePage extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/light_green.png'), // Path to the background image
+                image: AssetImage('assets/light_green.jpg'), // Path to the background image
                 fit: BoxFit.cover,
               ),
             ),
