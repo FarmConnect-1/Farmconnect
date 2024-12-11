@@ -24,7 +24,25 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final ScrollController _scrollController = ScrollController();
   bool isTyping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _messageController.addListener(() {
+      setState(() {
+        isTyping = _messageController.text.isNotEmpty;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +72,7 @@ class _ChatPageState extends State<ChatPage> {
                 }
 
                 return ListView.builder(
+                  controller: _scrollController,
                   reverse: true,
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
@@ -100,31 +119,55 @@ class _ChatPageState extends State<ChatPage> {
     return Align(
       alignment:
       isSentByCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.network(
-              mediaUrl,
-              width: 200,
-              height: 200,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return const Center(child: CircularProgressIndicator());
-              },
-              errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.error, size: 50, color: Colors.red),
-            ),
-          ],
+      child: GestureDetector(
+        onTap: () => _showFullImage(mediaUrl),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Image.network(
+            mediaUrl,
+            width: 200,
+            height: 200,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return const Center(child: CircularProgressIndicator());
+            },
+            errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.error, size: 50, color: Colors.red),
+          ),
         ),
       ),
+    );
+  }
+
+  void _showFullImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: InteractiveViewer(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
+                errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.error, size: 50, color: Colors.red),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -142,11 +185,6 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: TextField(
               controller: _messageController,
-              onChanged: (text) {
-                setState(() {
-                  isTyping = text.isNotEmpty;
-                });
-              },
               decoration: const InputDecoration(
                 hintText: 'Enter a message...',
                 border: OutlineInputBorder(),
@@ -164,9 +202,7 @@ class _ChatPageState extends State<ChatPage> {
               if (messageText.isNotEmpty) {
                 _sendMessage(chatId, messageText);
                 _messageController.clear();
-                setState(() {
-                  isTyping = false;
-                });
+                _scrollToBottom();
               }
             }
                 : null,
@@ -182,7 +218,8 @@ class _ChatPageState extends State<ChatPage> {
     if (pickedFile != null) {
       final file = File(pickedFile.path);
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('Images').child(fileName);
+      final storageRef =
+      FirebaseStorage.instance.ref().child('Images').child(fileName);
 
       await storageRef.putFile(file);
       final downloadUrl = await storageRef.getDownloadURL();
@@ -207,12 +244,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _sendMessage(String chatId, String text) {
-    final messagesRef = FirebaseFirestore.instance
+    FirebaseFirestore.instance
         .collection('Chats')
         .doc(chatId)
-        .collection('Messages');
-
-    messagesRef.add({
+        .collection('Messages')
+        .add({
       'type': 'text',
       'text': text,
       'senderId': widget.currentUserId,
@@ -224,6 +260,16 @@ class _ChatPageState extends State<ChatPage> {
       'latestMessage': text,
       'timestamp': FieldValue.serverTimestamp(),
     });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   String _generateChatId(String userId1, String userId2) {

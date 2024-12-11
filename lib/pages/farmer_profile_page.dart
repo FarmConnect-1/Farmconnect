@@ -144,7 +144,7 @@ class FarmerProfilePage extends StatelessWidget {
                             Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
                             buildInfoRow(Icons.map, 'State', '${farmerData['state'] ?? 'N/A'}'),
                             Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '₹0'),
+                            buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '${farmerData['balance']?? 'N/A'}'),
                             Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
 
 

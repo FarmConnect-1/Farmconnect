@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RetailerOffers extends StatefulWidget {
   const RetailerOffers({super.key});
@@ -9,8 +10,17 @@ class RetailerOffers extends StatefulWidget {
 }
 
 class _RetailerOffersPageState extends State<RetailerOffers> {
+  User? currentUser = FirebaseAuth.instance.currentUser;
+
   @override
   Widget build(BuildContext context) {
+    if (currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pending Offers')),
+        body: const Center(child: Text('You need to log in to view offers.')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Offers'),
@@ -18,7 +28,8 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Bids')
-            .where('status', isEqualTo: 'pending') // Filter by pending status
+            .where('status', isEqualTo: 'pending')
+            .where('retailerId', isEqualTo: currentUser!.uid)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -39,9 +50,9 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
               Map<String, dynamic> bidData = bids[index].data() as Map<String, dynamic>;
 
               String productId = bidData['productId'] ?? '';
-              String retailerId = bidData['retailerId'] ?? ''; // Fetch retailerId from Bids
+              String retailerId = bidData['retailerId'] ?? '';
               String bidId = bids[index].id;
-              double bidAmount = bidData['bidAmount']?.toDouble() ?? 0.0;
+              double bidAmount = (bidData['bidAmount'] ?? 0).toDouble();
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance.collection('Products').doc(productId).get(),
@@ -85,7 +96,8 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               ElevatedButton(
-                                onPressed: () => _updateBidStatus(bidId, 'locked', productId, retailerId),
+                                onPressed: () => _updateBidStatus(
+                                    bidId, 'locked', productId, retailerId, farmerId, bidAmount),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                 ),
@@ -93,7 +105,8 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton(
-                                onPressed: () => _updateBidStatus(bidId, 'rejected', null, retailerId),
+                                onPressed: () => _updateBidStatus(
+                                    bidId, 'rejected', null, retailerId, null, 0.0),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
                                 ),
@@ -114,45 +127,57 @@ class _RetailerOffersPageState extends State<RetailerOffers> {
     );
   }
 
-  // Function to update the bid status and add an order if accepted
-  Future<void> _updateBidStatus(String bidId, String newStatus, String? productId, String retailerId) async {
+  Future<void> _updateBidStatus(String bidId, String newStatus,
+      String? productId, String retailerId, String? farmerId,
+      double bidAmount) async {
     try {
       // Update the bid status
       await FirebaseFirestore.instance.collection('Bids').doc(bidId).update({
         'status': newStatus,
       });
 
-      if (newStatus == 'locked' && productId != null) {
-        // Fetch the product document to get details
-        DocumentSnapshot productSnapshot =
-        await FirebaseFirestore.instance.collection('Products').doc(productId).get();
+      if (newStatus == 'locked' && productId != null && farmerId != null) {
+        // Add order to Orders collection
+        await FirebaseFirestore.instance.collection('Orders').add({
+          'productID': productId,
+          'retailerId': retailerId,
+          'farmerId': farmerId,
+          'bidId': bidId,
+          'amountPaid': 0.10 * bidAmount,
+          'paymentLeft': bidAmount - (0.10 * bidAmount),
+          'orderDate': FieldValue.serverTimestamp(),
+        });
 
-        if (productSnapshot.exists) {
-          Map<String, dynamic> productData = productSnapshot.data() as Map<String, dynamic>;
+        // Update balances for both users
+        DocumentReference retailerRef = FirebaseFirestore.instance.collection('Users').doc(retailerId);
+        DocumentReference farmerRef = FirebaseFirestore.instance.collection('Users').doc(farmerId);
 
-          // Add the data to Orders collection
-          await FirebaseFirestore.instance.collection('Orders').add({
-            'productID': productId,
-            'retailerId': retailerId, // Taken from Bids collection
-            'farmerId': productData['farmerId'], // Extracted from product
-            'bidId': bidId,
-            'orderDate': FieldValue.serverTimestamp(), // Optional timestamp
-          });
-        }
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          // Fetch retailer balance
+          DocumentSnapshot retailerSnapshot = await transaction.get(retailerRef);
+          double retailerBalance = (retailerSnapshot['balance'] ?? 0).toDouble();
+          DocumentSnapshot farmerSnapshot = await transaction.get(farmerRef);
+          double farmerBalance = (farmerSnapshot['balance'] ?? 0).toDouble();
+
+
+          if (retailerBalance < 0.10 * bidAmount) {
+            throw Exception('Retailer has insufficient balance');
+          }
+
+          transaction.update(retailerRef, {'balance': retailerBalance - (0.10 * bidAmount)});
+          transaction.update(farmerRef, {'balance': farmerBalance + (0.10 * bidAmount)});
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offer accepted successfully!')),
+        );
+      } else if (newStatus == 'rejected') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offer rejected successfully!')),
+        );
       }
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newStatus == 'locked'
-                ? 'Offer accepted successfully!'
-                : 'Offer rejected successfully!',
-          ),
-        ),
-      );
     } catch (e) {
-      // Handle errors
+      debugPrint('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating status: $e')),
       );

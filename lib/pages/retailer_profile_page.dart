@@ -142,63 +142,9 @@ class RetailerProfilePage extends StatelessWidget {
                         Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
                         buildInfoRow(Icons.map, 'State', '${retailerData['state'] ?? 'N/A'}'),
                         Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                        buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '₹0'),
+                        buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '${retailerData['balance']?? 'N/A'}'),
                         Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                        FutureBuilder<double>(
-                          future: _getRetailerRating(),
-                          builder: (context, ratingSnapshot) {
-                            if (ratingSnapshot.connectionState == ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            if (ratingSnapshot.hasError || !ratingSnapshot.hasData) {
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Rating: N/A',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.green[700],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
 
-                            double rating = ratingSnapshot.data!;
-                            int fullStars = rating.floor();
-                            bool hasHalfStar = (rating - fullStars) >= 0.5;
-
-                            return Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Full stars
-                                    for (int i = 0; i < fullStars; i++)
-                                      Icon(Icons.star, color: Colors.amber, size: 30),
-                                    // Half star if applicable
-                                    if (hasHalfStar)
-                                      Icon(Icons.star_half, color: Colors.amber, size: 30),
-                                    // Empty stars to make up 5 stars
-                                    for (int i = fullStars + (hasHalfStar ? 1 : 0); i < 5; i++)
-                                      Icon(Icons.star_border, color: Colors.amber, size: 30),
-                                    // Rating number
-                                    SizedBox(width: 10),
-                                    Text(
-                                      rating.toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green[900],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        ),
 
                         Expanded(
                           child: Align(
@@ -238,7 +184,7 @@ class RetailerProfilePage extends StatelessWidget {
                   top: MediaQuery.of(context).size.height * 0.3-150, // Center the circle at the top of the light green section
                   left: MediaQuery.of(context).size.width*0.01+5, // Center the circle horizontally
                   child: CircleAvatar(
-                    radius: 90, // Size of the circle
+                    radius: 70, // Size of the circle
                     backgroundColor: Colors.green[700], // Darker shade for the profile circle
                     backgroundImage: AssetImage('assets/farmer_profile.jpg'), // Profile photo inside the circle
                   ),
@@ -253,9 +199,67 @@ class RetailerProfilePage extends StatelessWidget {
                     },
                   ),
                 ),
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3-150, // Center the circle at the top of the light green section
+                  left: MediaQuery.of(context).size.width*0.01+5,
+                  child: FutureBuilder<double>(
+                    future: _getRetailerRating(),
+                    builder: (context, ratingSnapshot) {
+                      if (ratingSnapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (ratingSnapshot.hasError || !ratingSnapshot.hasData) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Rating: N/A',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.green[700],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      double rating = ratingSnapshot.data!;
+                      int fullStars = rating.floor();
+                      bool hasHalfStar = (rating - fullStars) >= 0.5;
+
+                      return Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Full stars
+                              for (int i = 0; i < fullStars; i++)
+                                Icon(Icons.star, color: Colors.amber, size: 30),
+                              // Half star if applicable
+                              if (hasHalfStar)
+                                Icon(Icons.star_half, color: Colors.amber, size: 30),
+                              // Empty stars to make up 5 stars
+                              for (int i = fullStars + (hasHalfStar ? 1 : 0); i < 5; i++)
+                                Icon(Icons.star_border, color: Colors.amber, size: 30),
+                              // Rating number
+                              SizedBox(width: 10),
+                              Text(
+                                rating.toStringAsFixed(1),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[900],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                )
               ],
             ),
-
           );
         },
       ),

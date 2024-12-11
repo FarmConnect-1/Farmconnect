@@ -23,6 +23,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   List<dynamic> productImages = [];
   List<dynamic> productVideos = [];
   bool showAllMedia = false;
+  bool isPriceFieldVisible = false; // For showing price field
+  double? retailPrice;
+  double? startingBid;
+  int? minQuantity;
+  bool isCheckButtonClicked = false; // Flag to track if the "Check" button is clicked
 
   @override
   void initState() {
@@ -45,6 +50,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           status = productSnapshot['status'] ?? 'unknown';
           productImages = productSnapshot['productImages'] ?? [];
           productVideos = productSnapshot['productVideos'] ?? [];
+          retailPrice = productSnapshot['retailPrice']?.toDouble();
+          startingBid = productSnapshot['startingBid']?.toDouble();
+          minQuantity = productSnapshot['minQuantity']?.toInt();
         });
       }
     } catch (e) {
@@ -54,69 +62,245 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     }
   }
 
-  Future<void> _placeBid() async {
-    if (status != 'active') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bidding is not allowed. The auction is not active.')),
-      );
+  String _formatDateTime(DateTime dateTime) {
+    return '${_formatDate(dateTime)} ${_formatTime(dateTime)}';
+  }
+
+  Future<void> _checkQuantityAndPrice() async {
+    int? enteredQuantity = int.tryParse(quantityController.text);
+
+    if (enteredQuantity == null || enteredQuantity <= 0) {
+      _showAlert('Invalid Quantity', 'Please enter a valid quantity.');
+      setState(() {
+        isCheckButtonClicked = false;
+      });
       return;
     }
 
-    double bidAmount = double.tryParse(bidController.text) ?? 0;
-    int quantity = int.tryParse(quantityController.text) ?? 0;
-    if (bidAmount > 0 && quantity > 0) {
-      try {
-        if (bidAmount > (currentBid ?? 0)) {
-          FirebaseFirestore firestore = FirebaseFirestore.instance;
+    if (enteredQuantity < minQuantity!) {
+      setState(() {
+        isPriceFieldVisible = false;
+        isCheckButtonClicked = true;
+      });
+      _showAlert(
+        'Retail Price',
+        'Quantity is less than the minimum quantity. Default retail price is ₹${retailPrice?.toStringAsFixed(2)}.',
+      );
+    } else {
+      setState(() {
+        isPriceFieldVisible = true;
+        isCheckButtonClicked = true;
+      });
+    }
+  }
+  String _formatDate(DateTime dateTime) {
+    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month
+        .toString().padLeft(2, '0')}/${dateTime.year}';
+  }
 
-          await firestore.runTransaction((transaction) async {
-            transaction.set(
-              firestore.collection('Bids').doc(),
-              {
-                'productId': widget.productId,
-                'retailerId': currentUser?.uid,
-                'bidAmount': bidAmount,
-                'quantity': quantity,
-                'status': 'offered', // Setting status as null
-                'timestamp': FieldValue.serverTimestamp(),
-              },
-            );
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour == 0
+        ? 12
+        : dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
+  }
 
-            DocumentReference productRef =
-            firestore.collection('Products').doc(widget.productId);
-            transaction.update(productRef, {
-              'currentBid': bidAmount,
-              'highestBidder': currentUser?.uid,
-            });
-          });
 
-          setState(() {
-            currentBid = bidAmount;
-          });
+  Future<void> _placeBid() async {
+    if (status != 'active') {
+      _showAlert('Bidding Not Allowed', 'Bidding is not allowed. The auction is not active.');
+      return;
+    }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bid placed successfully!')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bid must be higher than the current bid!')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error placing bid: $e')),
-        );
+    int? quantity = int.tryParse(quantityController.text);
+
+    if (quantity == null || quantity <= 0) {
+      _showAlert('Invalid Input', 'Please enter a valid quantity.');
+      return;
+    }
+
+    double? bidAmount;
+    if (isPriceFieldVisible) {
+      bidAmount = double.tryParse(bidController.text);
+      if (bidAmount == null || bidAmount < startingBid!) {
+        _showAlert('Invalid Bid', 'Entered price must be greater than the starting bid of ₹${startingBid?.toStringAsFixed(2)}.');
+        return;
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid bid or quantity!')),
-      );
+      bidAmount = retailPrice; // Default retail price if quantity < minQuantity
+    }
+
+    try {
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      // Get the available quantity of the product from the Products collection
+      DocumentSnapshot productSnapshot = await firestore.collection('Products').doc(widget.productId).get();
+      if (!productSnapshot.exists) {
+        throw Exception('Product does not exist.');
+      }
+
+      int availableQuantity = productSnapshot.get('availableQuantity') ?? 0;
+      if (quantity > availableQuantity) {
+        _showAlert('Quantity Unavailable', 'This much quantity is not available. Only $availableQuantity items are available.');
+        return;
+      }
+
+      // Check if the user has already placed a bid on this product
+      QuerySnapshot bidSnapshot = await firestore
+          .collection('Bids')
+          .where('productId', isEqualTo: widget.productId)
+          .where('retailerId', isEqualTo: currentUser?.uid)
+          .get();
+
+      double? lastBidAmount;
+      if (bidSnapshot.docs.isNotEmpty) {
+        DocumentSnapshot existingBid = bidSnapshot.docs.first;
+        String existingStatus = existingBid.get('status') ?? '';
+        lastBidAmount = existingBid.get('bidAmount')?.toDouble();
+
+        if (existingStatus == 'pending') {
+          // Prevent further bidding if the status is 'pending'
+          _showAlert('Action Required', 'Your last bid is accepted by the farmer. Please accept or reject it.');
+          return;
+        }
+
+        if (existingStatus == 'offered') {
+          // Check if the new bid amount is greater than the last bid amount
+          if (bidAmount! <= lastBidAmount!) {
+            _showAlert('Invalid Bid', 'Your new bid amount must be greater than the last bid amount of ₹${lastBidAmount.toStringAsFixed(2)}.');
+            return;
+          }
+        }
+      }
+
+      // Calculate final total price
+      double finalPrice = (quantity < minQuantity!) ? (retailPrice! * quantity) : (bidAmount! * quantity);
+
+      // Show confirmation dialog
+      bool confirm = await _showConfirmationDialog(quantity, bidAmount, finalPrice);
+
+      if (!confirm) return;
+
+      // Place or update the bid after confirmation
+      if (bidSnapshot.docs.isNotEmpty && bidSnapshot.docs.first.get('status') == 'offered') {
+        // Update the existing bid if the status is 'offered'
+        DocumentSnapshot existingBid = bidSnapshot.docs.first;
+        await firestore.collection('Bids').doc(existingBid.id).update({
+          'bidAmount': bidAmount,
+          'quantity': quantity,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        _showAlert('Success', 'Bid updated successfully!');
+      } else {
+        // Create a new bid
+        await firestore.collection('Bids').add({
+          'productId': widget.productId,
+          'retailerId': currentUser?.uid,
+          'bidAmount': bidAmount,
+          'quantity': quantity,
+          'status': 'offered',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        _showAlert('Success', 'Bid placed successfully!');
+      }
+    } catch (e) {
+      _showAlert('Error', 'Error placing bid: ${e.toString()}');
     }
   }
 
+  Future<bool> _showConfirmationDialog(int quantity, double? bidAmount, double finalPrice) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Your Bid'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                Text('Quantity: $quantity'),
+                Text('Price per unit: ₹${bidAmount?.toStringAsFixed(2) ?? retailPrice?.toStringAsFixed(2)}'),
+                Text('Total Price: ₹${finalPrice.toStringAsFixed(2)}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            ElevatedButton(
+              child: const Text('Confirm'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    ) ??
+        false;
+  }
+
+
+  Future<void> _finalizeBid(int quantity, double bidAmount) async {
+    try {
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+      await firestore.collection('Bids').add({
+        'productId': widget.productId,
+        'retailerId': currentUser?.uid,
+        'bidAmount': bidAmount,
+        'quantity': quantity,
+        'status': 'offered',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        currentBid = bidAmount;
+      });
+
+      _showAlert('Success', 'Bid placed successfully!');
+    } catch (e) {
+      _showAlert('Error', 'Error finalizing bid: ${e.toString()}');
+    }
+  }
+
+
+
+
+  Future<void> _showAlert(String title, String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      // Prevent dismissing the alert by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(message),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   void _chatWithFarmer(BuildContext context) {
     if (farmerId != null) {
-      Navigator.pushNamed(context, '/chat_details', arguments: {'farmerId': farmerId});
+      Navigator.pushNamed(context, '/chat', arguments: {'farmerId': farmerId});
     }
   }
 
@@ -246,6 +430,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
+
+  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -337,13 +523,35 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                     Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment
+                                            .start,
                                         children: [
                                           buildProductDetail('Description',
                                               productData['description'] ?? ''),
                                           buildProductDetail(
                                               'Status', status ?? 'unknown'),
+                                          buildProductDetail(
+                                            'Start Date',
+                                            productData['timestamp'] != null
+                                                ? _formatDateTime(
+                                                productData['timestamp'] is Timestamp
+                                                    ? (productData['timestamp'] as Timestamp)
+                                                    .toDate()
+                                                    : DateTime.parse(
+                                                    productData['timestamp']))
+                                                : 'N/A',
+                                          ),
+                                          buildProductDetail(
+                                            'End Date & Time',
+                                            productData['bidEndTime'] != null
+                                                ? _formatDateTime(
+                                                productData['bidEndTime'] is Timestamp
+                                                    ? (productData['bidEndTime'] as Timestamp)
+                                                    .toDate()
+                                                    : DateTime.parse(
+                                                    productData['bidEndTime']))
+                                                : 'N/A',
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -360,29 +568,54 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     ),
                   ),
                 ),
-                TextFormField(
-                  controller: bidController,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Enter your bid amount',
-                    border: OutlineInputBorder(),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: quantityController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter quantity',
+                          border: OutlineInputBorder(),
+                        ),
+
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _checkQuantityAndPrice,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text('Check'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: quantityController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Enter quantity',
-                    border: OutlineInputBorder(),
+                if (isPriceFieldVisible)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: bidController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Enter your bid amount',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                    ],
                   ),
-                ),
+
                 const SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: _placeBid,
+                  onPressed: isCheckButtonClicked ? _placeBid : null,
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green),
+                    backgroundColor: isCheckButtonClicked ? Colors.green : Colors.grey,
+                  ),
                   child: const Text('Place Bid'),
                 ),
               ],
@@ -391,5 +624,14 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         },
       ),
     );
+  }
+
+  String _calculateTotalAmount() {
+    int? quantity = int.tryParse(quantityController.text);
+    double? price = isPriceFieldVisible
+        ? double.tryParse(bidController.text)
+        : retailPrice;
+    if (quantity == null || price == null) return '0.00';
+    return (quantity * price).toStringAsFixed(2);
   }
 }

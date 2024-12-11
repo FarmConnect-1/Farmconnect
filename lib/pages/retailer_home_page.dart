@@ -250,10 +250,7 @@ class _RetailerHomePageState extends State<RetailerHomePage> {
               height: 55,
             ),
             const SizedBox(width: 10),
-            const Text(
-              'Retailer Home',
-              style: TextStyle(fontSize: 20),
-            ),
+
           ],
         ),
         actions: [
