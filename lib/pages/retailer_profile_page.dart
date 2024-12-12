@@ -94,7 +94,7 @@ class RetailerProfilePage extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/light_green.jpg'), // Background image
+                image: AssetImage('assets/retail_bg.png'), // Background image
                 fit: BoxFit.cover, // Adjust the image to cover the screen
               ),
             ),
@@ -123,7 +123,7 @@ class RetailerProfilePage extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green[900],
+                                color: Colors.blue[900],
                               ),
                             ),
                           ],
@@ -160,7 +160,7 @@ class RetailerProfilePage extends StatelessWidget {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15), // Rounded corners
                                   ),
-                                  backgroundColor: Colors.green[700], // Button background color
+                                  backgroundColor: Colors.blue[700], // Button background color
                                 ),
                                 child: const Text(
                                   "Logout",
@@ -181,27 +181,27 @@ class RetailerProfilePage extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  top: MediaQuery.of(context).size.height * 0.3-150, // Center the circle at the top of the light green section
+                  top: MediaQuery.of(context).size.height * 0.3-120, // Center the circle at the top of the light green section
                   left: MediaQuery.of(context).size.width*0.01+5, // Center the circle horizontally
                   child: CircleAvatar(
                     radius: 70, // Size of the circle
-                    backgroundColor: Colors.green[700], // Darker shade for the profile circle
-                    backgroundImage: AssetImage('assets/farmer_profile.jpg'), // Profile photo inside the circle
+                    backgroundColor: Colors.blue[700], // Darker shade for the profile circle
+                    backgroundImage: AssetImage('assets/'), // Profile photo inside the circle
                   ),
                 ),
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 10, // Adjust for the status bar
                   left: 10,
                   child: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.green[900], size: 30),
+                    icon: Icon(Icons.arrow_back, color: Colors.blue[900], size: 30),
                     onPressed: () {
                       Navigator.pop(context);
                     },
                   ),
                 ),
                 Positioned(
-                  top: MediaQuery.of(context).size.height * 0.3-150, // Center the circle at the top of the light green section
-                  left: MediaQuery.of(context).size.width*0.01+5,
+                  top: MediaQuery.of(context).size.height * 0.3-40, // Center the circle at the top of the light green section
+                  left: MediaQuery.of(context).size.width*0.01+150,
                   child: FutureBuilder<double>(
                     future: _getRetailerRating(),
                     builder: (context, ratingSnapshot) {
@@ -216,7 +216,7 @@ class RetailerProfilePage extends StatelessWidget {
                               'Rating: N/A',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.green[700],
+                                color: Colors.blue[700],
                               ),
                             ),
                           ],
@@ -248,7 +248,7 @@ class RetailerProfilePage extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green[900],
+                                  color: Colors.blue[900],
                                 ),
                               ),
                             ],
@@ -271,7 +271,7 @@ class RetailerProfilePage extends StatelessWidget {
         Padding(padding: EdgeInsets.only(left: 20)),
         Icon(
           icon,
-          color: Colors.green[700],
+          color: Colors.blue[700],
         ),
         SizedBox(width: 10), // Space between icon and text
         Text(
@@ -279,7 +279,7 @@ class RetailerProfilePage extends StatelessWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.green[900],
+            color: Colors.blue[900],
           ),
         ),
         Expanded(
@@ -287,7 +287,7 @@ class RetailerProfilePage extends StatelessWidget {
             value,
             style: TextStyle(
               fontSize: 20,
-              color: Colors.green[700],
+              color: Colors.blue[700],
             ),
           ),
         ),

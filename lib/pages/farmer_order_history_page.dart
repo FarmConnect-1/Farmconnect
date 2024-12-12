@@ -94,6 +94,12 @@ class FarmerOrderHistoryPage extends StatelessWidget {
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Order History'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context); // Navigate back to the home page
+            },
+          ),
         ),
         body: StreamBuilder<QuerySnapshot>(
           stream: _fetchFarmerOrders(),

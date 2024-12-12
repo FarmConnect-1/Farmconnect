@@ -5,7 +5,7 @@ import 'transporter_profile_page.dart'; // Import the new transporter profile pa
 import 'login_page.dart'; // Import the login page or welcome screen after logout
 
 class TransporterHomePage extends StatefulWidget {
-  const TransporterHomePage({super.key});
+  const TransporterHomePage({super.key, required String username, required String email});
 
   @override
   _TransporterHomePageState createState() => _TransporterHomePageState();

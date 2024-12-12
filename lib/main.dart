@@ -1,6 +1,5 @@
 import 'package:farmconnect/pages/chat_page.dart';
 import 'package:farmconnect/pages/product_details_page.dart';
-import 'package:farmconnect/pages/signup_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,13 +12,16 @@ import 'pages/retailer_home_page.dart';
 import 'pages/transporter_home_page.dart';
 import 'pages/farmer_profile_page.dart'; // Import farmer profile page
 import 'pages/retailer_profile_page.dart'; // Import retailer profile page
-import 'pages/bid_history_page.dart'; // Import bid history page
 import 'pages/order_history_page.dart';
 import 'pages/farmer_order_history_page.dart';
 import 'pages/select_transport_provider.dart';
 import 'pages/retailer_offers.dart';
 import 'pages/chatlist.dart'; // Import ChatListPage
 import 'pages/welcome_page.dart';
+import 'pages/farmer_signup_page.dart';
+import 'pages/transporter_signup_page.dart';
+import 'pages/signUp.dart';
+import 'pages/roleandaddress_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,18 +62,23 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (context) => const HomePage());
       case '/welcome_page':
         return MaterialPageRoute(builder: (context) => const WelcomePage());
-      case '/signup_page':
-        return MaterialPageRoute(builder: (context) => const SignupPage());
+      case '/signup':
+        return MaterialPageRoute(builder: (context) => SignUp());
       case '/farmer_home':
-        return MaterialPageRoute(builder: (context) => const FarmerHomePage());
+        return MaterialPageRoute(builder: (context) => const FarmerHomePage(username: '', email: '',));
       case '/farmer_profile':
         return MaterialPageRoute(builder: (context) => const FarmerProfilePage());
       case '/retailer_home':
-        return MaterialPageRoute(builder: (context) => const RetailerHomePage());
+        return MaterialPageRoute(builder: (context) => const RetailerHome(username: '', email: '',));
       case '/retailer_profile':
         return MaterialPageRoute(builder: (context) => const RetailerProfilePage());
+      case '/roleandaddress_page':
+        return MaterialPageRoute(builder: (context) => const RoleAndAddressPage(name: '', email: '', phoneNumber: '', password: '',),);
       case '/transporter_home':
-        return MaterialPageRoute(builder: (context) => const TransporterHomePage());
+        return MaterialPageRoute(builder: (context) => const TransporterHomePage(username: '', email: '',));
+
+      case '/farmer_signup_page':
+        return MaterialPageRoute(builder: (context) => const FarmerSignupPage(username: '', email: '', phoneNumber: '', password: '', address: '', pincode: '', role: '',));
       case '/product_details':
         return MaterialPageRoute(
           builder: (context) => const ProductDetailsPage(productId: ''),
@@ -174,11 +181,11 @@ class AuthWrapper extends StatelessWidget {
 
               String? role = roleSnapshot.data;
               if (role == 'farmer') {
-                return const FarmerHomePage();
+                return const FarmerHomePage(username: '', email: '',);
               } else if (role == 'retailer') {
-                return const RetailerHomePage();
+                return const RetailerHome(username: '', email: '',);
               } else if (role == 'transport_provider') {
-                return const TransporterHomePage();
+                return const TransporterHomePage(username: '', email: '',);
               } else {
                 return const HomePage(); // Fallback if role not found
               }

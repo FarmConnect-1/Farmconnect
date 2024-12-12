@@ -1,14 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'add_product_page.dart'; // Import the add product page
-import 'farmer_products_details_page.dart'; // Import the farmer product details page
-import 'farmer_profile_page.dart'; // Import the farmer profile page
-import 'farmer_order_history_page.dart'; // Import the order history page
-import 'chatlist.dart'; // Import the chat list page
+import 'add_product_page.dart';
+import 'farmer_products_details_page.dart';
+import 'farmer_profile_page.dart';
+import 'farmer_order_history_page.dart';
+import 'chatlist.dart';
 
-class FarmerHomePage extends StatelessWidget {
-  const FarmerHomePage({super.key});
+class FarmerHomePage extends StatefulWidget {
+  final String username;
+  final String email;
+
+  const FarmerHomePage({
+    Key? key,
+    required this.username,
+    required this.email
+  }) : super(key: key);
+
+  @override
+  _FarmerHomePageState createState() => _FarmerHomePageState();
+}
+
+class _FarmerHomePageState extends State<FarmerHomePage> {
+  User? user;
+
+  @override
+  void initState() {
+    super.initState();
+    user = FirebaseAuth.instance.currentUser;
+
+    // If no user is logged in, redirect to login
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+    }
+  }
 
   Future<void> _logout(BuildContext context) async {
     bool? confirmLogout = await showDialog<bool>(
@@ -20,13 +47,13 @@ class FarmerHomePage extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(false); // User cancels the logout
+                Navigator.of(context).pop(false);
               },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(true); // User confirms the logout
+                Navigator.of(context).pop(true);
               },
               child: const Text('Logout'),
             ),
@@ -64,21 +91,20 @@ class FarmerHomePage extends StatelessWidget {
     );
   }
 
-
-  // Navigate to the FarmerProductDetailsPage
-  void _goToProductDetails(BuildContext context, String productId, Map<String, dynamic> productData) {
+  void _goToProductDetails(BuildContext context, String productId,
+      Map<String, dynamic> productData) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FarmerProductDetailsPage(
-          productId: productId,
-          productData: productData,
-        ),
+        builder: (context) =>
+            FarmerProductDetailsPage(
+              productId: productId,
+              productData: productData,
+            ),
       ),
     );
   }
 
-  // Navigate to the Order History page
   void _goToOrderHistory(BuildContext context) {
     Navigator.push(
       context,
@@ -88,25 +114,34 @@ class FarmerHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    // Check if the user is logged in, and get user details
+    // Check if the user is logged in
     if (user == null) {
       return Scaffold(
         body: Center(
-          child: Text("User is not logged in."),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("User is not logged in."),
+              ElevatedButton(
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, '/login'),
+                child: const Text('Go to Login'),
+              )
+            ],
+          ),
         ),
       );
     }
 
-    String currentUserId = user.uid; // Get the current user's ID
-    String userRole = "farmer"; // You can replace this with actual logic to get the user's role
+    String currentUserId = user!.uid;
+    String userRole = "farmer";
 
     return Scaffold(
       appBar: AppBar(
         // Add the logo in the leading property of the AppBar
         leading: Padding(
-          padding: const EdgeInsets.all(8.0), // Optional: Adjust padding as needed
+          padding: const EdgeInsets.all(8.0),
+          // Optional: Adjust padding as needed
           child: Image.asset(
             'assets/logo1.png', // Path to your logo file
             height: 100, // Adjust the height as needed
@@ -116,7 +151,9 @@ class FarmerHomePage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.chat), // Chat icon
-            onPressed: () => _goToChatList(context, currentUserId, userRole), // Pass the currentUserId and userRole
+            onPressed: () =>
+                _goToChatList(context, currentUserId,
+                    userRole), // Pass the currentUserId and userRole
           ),
           IconButton(
             icon: const Icon(Icons.person),
@@ -124,7 +161,8 @@ class FarmerHomePage extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => _logout(context), // Show logout confirmation dialog
+            onPressed: () =>
+                _logout(context), // Show logout confirmation dialog
           ),
         ],
       ),
@@ -143,7 +181,8 @@ class FarmerHomePage extends StatelessWidget {
               stream: FirebaseFirestore.instance
                   .collection('Products')
                   .where('farmerId', isEqualTo: user?.uid)
-                  .where('status', isEqualTo: 'active') // Exclude products with status 'closed'
+                  .where('status',
+                  isEqualTo: 'active') // Exclude products with status 'closed'
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -157,8 +196,11 @@ class FarmerHomePage extends StatelessWidget {
                 }
 
                 return ListView(
-                  children: snapshot.data!.docs.map((DocumentSnapshot document) {
-                    Map<String, dynamic> product = document.data() as Map<String, dynamic>;
+                  children: snapshot.data!.docs.map((
+                      DocumentSnapshot document) {
+                    Map<String, dynamic> product = document.data() as Map<
+                        String,
+                        dynamic>;
 
                     // Safely handle numeric values, converting them to double
                     double currentBid = 0.0;
@@ -170,7 +212,8 @@ class FarmerHomePage extends StatelessWidget {
 
                     return ListTile(
                       title: Text(product['productName']),
-                      subtitle: Text('Current Bid: \$${currentBid.toStringAsFixed(2)}'),
+                      subtitle: Text(
+                          'Current Bid: \$${currentBid.toStringAsFixed(2)}'),
                       trailing: Text(product['status']),
                       onTap: () {
                         _goToProductDetails(context, document.id, product);
@@ -194,7 +237,8 @@ class FarmerHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: () => _goToOrderHistory(context), // Navigate to order history page
+              onPressed: () => _goToOrderHistory(context),
+              // Navigate to order history page
               child: const Text('Order History'),
             ),
           ],

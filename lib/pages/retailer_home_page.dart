@@ -5,14 +5,21 @@ import 'product_details_page.dart';
 import 'retailer_offers.dart';
 import 'chatlist.dart';
 
-class RetailerHomePage extends StatefulWidget {
-  const RetailerHomePage({super.key});
+class RetailerHome extends StatefulWidget {
+  final String username;
+  final String email;
+
+  const RetailerHome({
+    Key? key,
+    required this.username,
+    required this.email
+  }) : super(key: key);
 
   @override
   _RetailerHomePageState createState() => _RetailerHomePageState();
 }
 
-class _RetailerHomePageState extends State<RetailerHomePage> {
+class _RetailerHomePageState extends State<RetailerHome> {
   String searchQuery = '';
   String? selectedState;
   String? selectedDistrict;

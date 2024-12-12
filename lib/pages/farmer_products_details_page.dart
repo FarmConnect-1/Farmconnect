@@ -165,7 +165,7 @@ class _FarmerProductDetailsPageState extends State<FarmerProductDetailsPage> {
               const SizedBox(height: 20),
               Text('Description: ${product['description']}'),
               const SizedBox(height: 20),
-              Text('Current Bid: \$${product['currentBid'] ?? 0.0}'),
+              Text('Current Bid: \₹${product['currentBid'] ?? 0.0}'),
               const SizedBox(height: 20),
               Text(
                 'Available Quantity: ${product['availableQuantity']}',

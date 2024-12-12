@@ -85,7 +85,7 @@ class WelcomePage extends StatelessWidget {
                         ),
                         onPressed: () {
                           // Navigate to Sign Up Page
-                          Navigator.pushReplacementNamed(context, '/signup_page');
+                          Navigator.pushReplacementNamed(context, '/signup');
                         },
                         child: const Text(
                           'Sign Up',

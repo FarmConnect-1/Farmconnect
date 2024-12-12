@@ -1,3 +1,4 @@
+import 'package:farmconnect/pages/chat_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -154,6 +155,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           .where('retailerId', isEqualTo: currentUser?.uid)
           .get();
 
+
+
       double? lastBidAmount;
       if (bidSnapshot.docs.isNotEmpty) {
         DocumentSnapshot existingBid = bidSnapshot.docs.first;
@@ -204,6 +207,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           'timestamp': FieldValue.serverTimestamp(),
         });
         _showAlert('Success', 'Bid placed successfully!');
+        _finalizeBid(quantity, bidAmount!);
       }
     } catch (e) {
       _showAlert('Error', 'Error placing bid: ${e.toString()}');
@@ -299,10 +303,24 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
 
   void _chatWithFarmer(BuildContext context) {
-    if (farmerId != null) {
-      Navigator.pushNamed(context, '/chat', arguments: {'farmerId': farmerId});
+    if (farmerId != null && currentUser != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatPage(
+            currentUserId: currentUser!.uid,
+            targetUserId: farmerId!,
+            targetUserName: 'Farmer', // Replace with the farmer's name if available
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to start chat. Farmer information is missing.')),
+      );
     }
   }
+
 
   Widget _buildMediaSection() {
     List<Widget> mediaWidgets = [];
@@ -437,7 +455,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Product Details'),
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.blue,
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
@@ -468,8 +486,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                           width: double.infinity,
                           height: 170,
                           decoration: BoxDecoration(
-                            color: Colors.green[100],
-                            border: Border.all(color: Colors.green, width: 1),
+                            color: Colors.blue[100],
+                            border: Border.all(color: Colors.blue, width: 1),
                           ),
                           child: _buildMediaSection(),
                         ),
@@ -512,8 +530,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                 unselectedLabelColor: Colors.grey,
                                 indicatorColor: Colors.green,
                                 tabs: [
-                                  Tab(text: 'Details'),
-                                  Tab(text: 'History'),
+                                  Tab(text: 'Product Details'),
+                                  Tab(text: 'Bidding Details'),
                                 ],
                               ),
                               SizedBox(
@@ -555,8 +573,22 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                         ],
                                       ),
                                     ),
-                                    const Center(
-                                      child: Text('No bid history available'),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment
+                                            .start,
+                                        children: [
+                                          buildProductDetail(
+                                              'Category',productData['category']),
+                                          buildProductDetail('Available Quantity',
+                                              '${productData['availableQuantity']}'),
+                                          buildProductDetail(
+                                              'Minimum Quantity to bid', '${productData['minQuantity']}'),
+                                          buildProductDetail(
+                                              'Retail Price','${productData['retailPrice']}'),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -585,7 +617,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     ElevatedButton(
                       onPressed: _checkQuantityAndPrice,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: Colors.blue,
                       ),
                       child: const Text('Check'),
                     ),
@@ -611,12 +643,44 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   ),
 
                 const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: isCheckButtonClicked ? _placeBid : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isCheckButtonClicked ? Colors.green : Colors.grey,
-                  ),
-                  child: const Text('Place Bid'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isCheckButtonClicked ? _placeBid : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isCheckButtonClicked ? Colors.blue : Colors.grey,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: Text(
+                          'Place Bid',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _chatWithFarmer(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: Text(
+                          "Chat with Farmer",
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

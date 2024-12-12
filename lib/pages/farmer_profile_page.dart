@@ -92,119 +92,119 @@ class FarmerProfilePage extends StatelessWidget {
           String profilePictureUrl = farmerData['profilePicture'] ?? '';
 
           return Container(
-                decoration: BoxDecoration(
-                image: DecorationImage(
+            decoration: BoxDecoration(
+              image: DecorationImage(
                 image: AssetImage('assets/light_green.jpg'), // Background image
                 fit: BoxFit.cover, // Adjust the image to cover the screen
               ),
             ),
             child: Stack(
-                children: [
-                  // Light Green Section (Bottom 70%) overlapping the dark green section
-                  Positioned(
-                    top: MediaQuery.of(context).size.height * 0.3 - 50, // Overlap the dark green section by 50
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: MediaQuery.of(context).size.height * 0.7 + 50, // Extend the height for the overlap
-                      decoration: BoxDecoration(
-                        color: Colors.lightGreen[50],
-                      ),
-                      child: Column(
+              children: [
+                // Light Green Section (Bottom 70%) overlapping the dark green section
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3 - 50, // Overlap the dark green section by 50
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.7 + 50, // Extend the height for the overlap
+                    decoration: BoxDecoration(
+                      color: Colors.lightGreen[50],
+                    ),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 70),
+                        Row(
                           children: [
-                            SizedBox(height: 70),
-                            Row(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 20), // Add some padding to the left
-                                ),
-                                Text(
-                                  '${farmerData['username'] ?? 'Unknown'}',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green[900],
-                                  ),
-                                ),
-                              ],
+                            Padding(
+                              padding: const EdgeInsets.only(left: 20), // Add some padding to the left
                             ),
+                            Text(
+                              '${farmerData['username'] ?? 'Unknown'}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[900],
+                              ),
+                            ),
+                          ],
+                        ),
 
-                            SizedBox(height: 5),
-                            Divider(thickness: 5, height: 10),//Thick divider
-                            SizedBox(height: 10), // Space between name and other information
-                            buildInfoRow(Icons.phone, 'Phone Number', '${farmerData['phoneNumber'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.email, 'Email', '${farmerData['email'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.document_scanner, 'Farmer Certificate Number', '${farmerData['farmerCertificateNumber'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.home, 'Address', '${farmerData['address'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.location_city, 'District', '${farmerData['district'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.map, 'State', '${farmerData['state'] ?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
-                            buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '${farmerData['balance']?? 'N/A'}'),
-                            Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        SizedBox(height: 5),
+                        Divider(thickness: 5, height: 10),//Thick divider
+                        SizedBox(height: 10), // Space between name and other information
+                        buildInfoRow(Icons.phone, 'Phone Number', '${farmerData['phoneNumber'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.email, 'Email', '${farmerData['email'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.document_scanner, 'Farmer Certificate Number', '${farmerData['farmerCertificateNumber'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.home, 'Address', '${farmerData['address'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.location_city, 'District', '${farmerData['district'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.map, 'State', '${farmerData['state'] ?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
+                        buildInfoRow(Icons.currency_rupee_rounded, 'Balance', '${farmerData['balance']?? 'N/A'}'),
+                        Divider(thickness: 1, height: 25,indent: 50,endIndent: 40),
 
 
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                  width: MediaQuery.of(context).size.width * 0.6, // Button takes 60% of the screen width
-                                  height: 50, // Fixed height for the button
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      _logout(context);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15), // Rounded corners
-                                      ),
-                                      backgroundColor: Colors.green[700], // Button background color
-                                    ),
-                                    child: const Text(
-                                      "Logout",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white, // Text color
-                                      ),
-                                    ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.6, // Button takes 60% of the screen width
+                              height: 50, // Fixed height for the button
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  _logout(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15), // Rounded corners
+                                  ),
+                                  backgroundColor: Colors.green[700], // Button background color
+                                ),
+                                child: const Text(
+                                  "Logout",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white, // Text color
                                   ),
                                 ),
                               ),
                             ),
-
-                          ],
+                          ),
                         ),
 
+                      ],
                     ),
+
                   ),
-                  Positioned(
-                    top: MediaQuery.of(context).size.height * 0.3-120, // Center the circle at the top of the light green section
-                    left: MediaQuery.of(context).size.width*0.01+5, // Center the circle horizontally
-                    child: CircleAvatar(
-                      radius: 70, // Size of the circle
-                      backgroundColor: Colors.green[700], // Darker shade for the profile circle
-                      backgroundImage: AssetImage('assets/farmer_profile.jpg'), // Profile photo inside the circle
-                    ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3-120, // Center the circle at the top of the light green section
+                  left: MediaQuery.of(context).size.width*0.01+5, // Center the circle horizontally
+                  child: CircleAvatar(
+                    radius: 70, // Size of the circle
+                    backgroundColor: Colors.green[700], // Darker shade for the profile circle
+                    backgroundImage: AssetImage('assets/farmer_profile.jpg'), // Profile photo inside the circle
                   ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 10, // Adjust for the status bar
-                    left: 10,
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.green[900], size: 30),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                    ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 10, // Adjust for the status bar
+                  left: 10,
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.green[900], size: 30),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
                   ),
-                  Positioned(
-                    top: MediaQuery.of(context).size.height * 0.3-40, // Center the circle at the top of the light green section
-                    left: MediaQuery.of(context).size.width*0.01+150,
-                    child: FutureBuilder<double>(
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).size.height * 0.3-40, // Center the circle at the top of the light green section
+                  left: MediaQuery.of(context).size.width*0.01+150,
+                  child: FutureBuilder<double>(
                     future: _getFarmerRating(),
                     builder: (context, ratingSnapshot) {
                       if (ratingSnapshot.connectionState == ConnectionState.waiting) {
@@ -259,8 +259,8 @@ class FarmerProfilePage extends StatelessWidget {
                       );
                     },
                   ),)
-                ],
-              ),
+              ],
+            ),
 
           );
         },

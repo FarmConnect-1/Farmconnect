@@ -1,47 +1,28 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'roleandaddress_page.dart'; // Import the next page
+import 'package:path/path.dart' as path;
 
-class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
-
-  @override
-  _SignupPageState createState() => _SignupPageState();
-}
-
-class _SignupPageState extends State<SignupPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  String? _selectedRole; // Variable to store selected role
-  final TextEditingController _usernameController = TextEditingController();
+class SignUp extends StatelessWidget {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _reenterPasswordController = TextEditingController(); // Re-enter password controller
 
-  Future<void> _handleSignup() async {
-    try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      final user = userCredential.user;
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('Users').doc(user.uid).set({
-          'username': _usernameController.text.trim(),
-          'name': _nameController.text.trim(),
-          'email': user.email,
-          'phoneNumber': _phoneNumberController.text.trim(),
-          'role': _selectedRole, // Store selected role in Firestore
-        });
+  // Function to validate email format
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
+    return emailRegex.hasMatch(email);
+  }
 
-        Navigator.pushReplacementNamed(context, '/farmer_home');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Signup failed: $e')),
-      );
-    }
+  // Function to validate phone number (for India)
+  bool _isValidPhoneNumber(String phoneNumber) {
+    final phoneRegex = RegExp(r"^[6-9]\d{9}$");
+    return phoneRegex.hasMatch(phoneNumber);
   }
 
   @override
@@ -49,16 +30,14 @@ class _SignupPageState extends State<SignupPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/light_green.png'), // Background image
+                image: AssetImage('assets/light_green.jpg'),
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          // Signup Content
           SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -78,23 +57,15 @@ class _SignupPageState extends State<SignupPage> {
                   Center(
                     child: Image.asset('assets/logo1.png', height: 125),
                   ),
-                  const SizedBox(height: 15),
                   const Center(
                     child: Text(
                       'Hello! Sign Up to get started',
-                      textAlign: TextAlign.left,
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Poppins',
                         color: Colors.black,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  _buildInputField(
-                    controller: _usernameController,
-                    labelText: 'Username',
                   ),
                   const SizedBox(height: 15),
                   _buildInputField(
@@ -118,20 +89,10 @@ class _SignupPageState extends State<SignupPage> {
                     obscureText: true,
                   ),
                   const SizedBox(height: 15),
-                  DropdownButton<String>(
-                    value: _selectedRole,
-                    hint: const Text('Select Role'),
-                    items: <String>['Farmer', 'Retailer', 'Transporter']
-                        .map((role) => DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
-                    ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedRole = value;
-                      });
-                    },
+                  _buildInputField(
+                    controller: _reenterPasswordController,
+                    labelText: 'Re-enter Password',
+                    obscureText: true,
                   ),
                   const SizedBox(height: 30),
                   ElevatedButton(
@@ -142,9 +103,64 @@ class _SignupPageState extends State<SignupPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: _handleSignup,
+                    onPressed: () {
+                      // Validate inputs
+                      String name = _nameController.text.trim();
+                      String email = _emailController.text.trim();
+                      String phoneNumber = _phoneNumberController.text.trim();
+                      String password = _passwordController.text.trim();
+                      String reenteredPassword = _reenterPasswordController.text.trim();
+
+                      // Check if fields are empty
+                      if (name.isEmpty || email.isEmpty || phoneNumber.isEmpty || password.isEmpty || reenteredPassword.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('All fields are mandatory!')),
+                        );
+                        return;
+                      }
+
+                      // Validate email format
+                      if (!_isValidEmail(email)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a valid email address')),
+                        );
+                        return;
+                      }
+
+                      // Validate phone number
+                      if (!_isValidPhoneNumber(phoneNumber)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a valid 10-digit phone number')),
+                        );
+                        return;
+                      }
+
+                      // Add '+91' to phone number before saving
+                      phoneNumber = '+91' + phoneNumber;
+
+                      // Check if passwords match
+                      if (password != reenteredPassword) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Passwords do not match')),
+                        );
+                        return;
+                      }
+
+                      // Navigate to the next page and pass the collected data
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RoleAndAddressPage(
+                            name: name,
+                            email: email,
+                            phoneNumber: phoneNumber,
+                            password: password,
+                          ),
+                        ),
+                      );
+                    },
                     child: const Text(
-                      'Sign Up',
+                      'Next',
                       style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ),
@@ -165,6 +181,13 @@ class _SignupPageState extends State<SignupPage> {
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Fixed progress bar at the bottom
+                  const LinearProgressIndicator(
+                    value: 0.33, // Represents 33% progress
+                    backgroundColor: Colors.white,
+                    color: Colors.green, // Progress bar color
                   ),
                 ],
               ),
@@ -189,7 +212,7 @@ class _SignupPageState extends State<SignupPage> {
           borderRadius: BorderRadius.circular(10),
         ),
         filled: true,
-        fillColor: Colors.grey[300], // Set input field background to grey
+        fillColor: Colors.grey[300],
       ),
     );
   }

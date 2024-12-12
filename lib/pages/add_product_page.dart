@@ -1,10 +1,14 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:tflite_flutter/tflite_flutter.dart'; // Import TensorFlow Lite Flutter package
+import 'package:image/image.dart' as img; // For additional image processing
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +50,179 @@ class _AddProductPageState extends State<AddProductPage> {
   final List<String> _imageUrls = []; // Added this
   File? _videoFile;
   String? _videoUrl; // Added this
+  final Map<String, List<String>> subCategoryOptions = {
+    'Fruits': ['Apple', 'Banana', 'Grapes', 'Papaya', 'Mango'],
+    'Veggies': ['Tomato', 'Ladyfinger', 'Onion'],
+    'Grains': ['Wheat', 'Rice', 'Barley'],
+  };
+  String? _predictionResult;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
+  }
+  String? _selectedSubcategory;
+
+  late Interpreter _interpreterA;
+  late Interpreter _interpreterB;
+  bool _isModelALoaded = false;
+  bool _isModelBLoaded = false;
+
+  Future<void> _loadModel() async {
+    try {
+      _interpreterA = await Interpreter.fromAsset("assets/model_unquant_a.tflite");
+      setState(() {
+        _isModelALoaded = true;
+      });
+      print("Model A loaded successfully.");
+    } catch (e) {
+      setState(() {
+        _isModelALoaded = false;
+      });
+      print("Error loading Model A: $e");
+    }
+
+    try {
+      _interpreterB = await Interpreter.fromAsset("assets/model_unquant_b.tflite");
+      setState(() {
+        _isModelBLoaded = true;
+      });
+      print("Model B loaded successfully.");
+    } catch (e) {
+      setState(() {
+        _isModelBLoaded = false;
+      });
+      print("Error loading Model B: $e");
+    }
+  }
+
+
+  Future<void> _predictImage(File image) async {
+    Interpreter selectedInterpreter;
+
+    // Choose interpreter based on subcategory
+    if (_selectedSubcategory == 'Apple') {
+      if (!_isModelALoaded) {
+        setState(() {
+          _predictionResult = "Model A not loaded. Please try again later.";
+        });
+        return;
+      }
+      selectedInterpreter = _interpreterA;
+    } else if (_selectedSubcategory == 'Banana') {
+      if (!_isModelBLoaded) {
+        setState(() {
+          _predictionResult = "Model B not loaded. Please try again later.";
+        });
+        return;
+      }
+      selectedInterpreter = _interpreterB;
+    } else {
+      // Default to Model A for other subcategories
+      if (!_isModelALoaded) {
+        setState(() {
+          _predictionResult = "Model A not loaded. Please try again later.";
+        });
+        return;
+      }
+      selectedInterpreter = _interpreterA;
+    }
+
+    try {
+      print("Starting prediction...");
+
+      // Decode the image
+      final decodedImage = img.decodeImage(await image.readAsBytes());
+      if (decodedImage == null) {
+        throw Exception("Failed to decode image.");
+      }
+
+      // Resize the image to 224x224 (as expected by the model)
+      final resizedImage = img.copyResize(decodedImage, width: 224, height: 224);
+
+      // Prepare the image as input tensor
+      final input = List.generate(
+        224,
+            (y) => List.generate(
+          224,
+              (x) {
+            final pixel = resizedImage.getPixel(x, y);
+            return [
+              (img.getRed(pixel) / 255.0),   // Red channel
+              (img.getGreen(pixel) / 255.0), // Green channel
+              (img.getBlue(pixel) / 255.0),  // Blue channel
+            ];
+          },
+        ),
+      );
+
+      // Reshape the input into the expected format: [1, 224, 224, 3]
+      final inputTensor = [input];
+
+      // Prepare the output buffer
+      var output = List.filled(1 * 2, 0.0).reshape([1, 2]);
+
+      // Run inference using the selected interpreter
+      selectedInterpreter.run(inputTensor, output);
+
+      // Process the result
+      final confidenceList = (output[0] as List).map((e) => e as double).toList();
+      final maxConfidenceIndex = confidenceList.indexWhere(
+            (value) => value == confidenceList.reduce((a, b) => a > b ? a : b),
+      );
+      if(maxConfidenceIndex == 0){
+        setState(() {
+          _predictionResult =
+              (confidenceList[maxConfidenceIndex] * 5).toStringAsFixed(2);
+        });
+      }
+      else{
+        setState(() {
+          _predictionResult =
+              (5 - confidenceList[maxConfidenceIndex] * 5).toStringAsFixed(2);
+        });
+      }
+
+
+
+      print("Prediction completed successfully.");
+    } catch (e) {
+      print("Error during prediction: $e");
+      setState(() {
+        _predictionResult = "Error during prediction: $e";
+      });
+    }
+  }
+
+  DropdownButtonFormField<String> _buildSubcategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      hint: const Text('Select Subcategory'),
+      value: _selectedSubcategory,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey[300],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      items: subCategoryOptions[_selectedCategory]!
+          .map((subcategory) => DropdownMenuItem(
+        value: subcategory,
+        child: Text(subcategory),
+      ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedSubcategory = value;
+        });
+      },
+      validator: (value) =>
+      value == null ? 'Select a subcategory' : null,
+    );
+  }
+
 
   // Method to pick an image from the gallery
   Future<void> _pickImage() async {
@@ -57,6 +234,7 @@ class _AddProductPageState extends State<AddProductPage> {
     }
   }
 
+
   // Method to take a picture with the camera
   Future<void> _takePicture() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
@@ -66,6 +244,9 @@ class _AddProductPageState extends State<AddProductPage> {
       });
       File imageFile = File(pickedFile.path);
       try {
+        // Call predictImage to get prediction result
+        await _predictImage(imageFile);
+
         String? imageUrl = await _uploadFile(imageFile, 'Images');
         if (imageUrl != null) {
           setState(() {
@@ -74,7 +255,10 @@ class _AddProductPageState extends State<AddProductPage> {
           });
         }
       } catch (e) {
-        print('Error uploading image: $e');
+        print('Error uploading image or predicting: $e');
+        setState(() {
+          _predictionResult = 'Error during image processing: $e';
+        });
       } finally {
         setState(() {
           _isLoading = false;
@@ -161,6 +345,19 @@ class _AddProductPageState extends State<AddProductPage> {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permissions are denied')),
+            );
+            return;
+          }
+        }
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+
         final collection = FirebaseFirestore.instance.collection('Products');
         await collection.add({
           'farmerId': user.uid,
@@ -179,13 +376,14 @@ class _AddProductPageState extends State<AddProductPage> {
           'productVideos': _videoUrl != null ? [_videoUrl!] : [],
           'bidEndTime': _bidEndTime!.toIso8601String(),
           'timestamp': FieldValue.serverTimestamp(),
+          'location': GeoPoint(position.latitude, position.longitude),
+          'quality' : _predictionResult,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product added successfully')),
         );
 
-        print('Product successfully added to Firestore!');
         _resetForm();
       } catch (e) {
         print('Error adding product to Firestore: $e');
@@ -199,6 +397,84 @@ class _AddProductPageState extends State<AddProductPage> {
       }
     }
   }
+  Widget _buildImageSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Images',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        if (_predictionResult != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Prediction: Good with $_predictionResult /5',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+            ),
+          ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (_imageFiles.isNotEmpty)
+                ..._imageFiles.map(
+                      (file) => Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            file,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _imageFiles.remove(file);
+                              });
+                            },
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              GestureDetector(
+                onTap: _takePicture,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[300],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
 
   void _resetForm() {
     productNameController.clear();
@@ -278,6 +554,13 @@ class _AddProductPageState extends State<AddProductPage> {
                         validator: (value) =>
                         value == null ? 'Select a category' : null,
                       ),
+                      if (_selectedCategory != null &&
+                          subCategoryOptions[_selectedCategory!]!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: _buildSubcategoryDropdown(),
+                        ),
+
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: productNameController,
@@ -295,49 +578,31 @@ class _AddProductPageState extends State<AddProductPage> {
                             : null,
                       ),
                       const SizedBox(height: 20),
-                      Row(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          GestureDetector(
-                            onTap: _takePicture,
-                            child: Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
+                          const SizedBox(height: 20),
+                          _buildImageSection(),
+                          const SizedBox(height: 20),
+
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: descriptionController,
+                            maxLines: 4,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey[300],
+                              labelText: 'Description',
+                              border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey[300],
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.add_photo_alternate,
-                                  size: 40,
-                                  color: Colors.grey,
-                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: TextFormField(
-                              controller: descriptionController,
-                              maxLines: 4,
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.grey[300],
-                                labelText: 'Description',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              validator: (value) =>
-                              value == null || value.isEmpty
-                                  ? 'Enter description'
-                                  : null,
-                            ),
+                            validator: (value) =>
+                            value == null || value.isEmpty ? 'Enter description' : null,
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 20),
                       Row(
                         children: [

@@ -12,10 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  geolocator: ^13.0.2
   intl: ^0.17.0
-
-
-
   cupertino_icons: ^1.0.6
   firebase_core: ^3.4.0
   firebase_auth: ^5.2.0
@@ -28,6 +26,12 @@ dependencies:
   tflite_flutter: ^0.11.0
   image: ^3.3.0
   flutter_image_compress: ^2.3.0
+  file_picker: ^5.0.1
+  pdf : ^3.8.1
+  path_provider: ^2.0.14
+
+
+
 dev_depenencies:
   flutter_test:
     sdk: flutter
@@ -45,4 +49,5 @@ flutter:
   assets:
     - assets/light_green.jpg
     - assets/logo1.png
-    - assets/model_unquant.tflite
+    - assets/model_unquant_a.tflite
+    - assets/model_unquant_b.tflite
