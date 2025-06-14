@@ -44,22 +44,23 @@
 - **Authentication:** Aadhaar & Phone Number
 - **Storage:** Firebase Storage
 - **Other APIs:** Google Maps API, DigiLocker (optional integration)
-
+---
 ##🎯 Use Cases
 -Eliminate middlemen in agricultural trade.
 -Provide farmers direct access to market and logistics.
 -Improve transparency and fairness in crop pricing.
 -Apply AI for quality-based produce classification.
 -Enable digital transactions and documentation for rural users.
-
+---
 ##🏆 Achievements
 -👨‍💻 Grand Finalist - Smart India Hackathon 2024
 -Selected among top teams nationally.
 -Finale held at IIT Hyderabad.
 -Led team as project coordinator.
-
+---
 
 ##🙏 Acknowledgements
 -Ministry of Education Innovation Cell (Govt. of India)
 -Flutter, Firebase & TensorFlow Open Source Communities
 -Smart India Hackathon 2024 Organizers
+---
